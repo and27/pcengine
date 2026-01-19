@@ -77,6 +77,13 @@ function ProjectSection({
 }
 
 async function ProjectList() {
+  const supabase = await createClient();
+  const { data } = await supabase.auth.getClaims();
+
+  if (!data?.claims) {
+    redirect("/auth/login");
+  }
+
   const projects = await fetchProjects();
   const grouped = groupProjects(projects);
 
@@ -89,18 +96,7 @@ async function ProjectList() {
   );
 }
 
-async function ensureAuthenticated() {
-  const supabase = await createClient();
-  const { data } = await supabase.auth.getClaims();
-
-  if (!data?.claims) {
-    redirect("/auth/login");
-  }
-}
-
-export default async function ProtectedPage() {
-  await ensureAuthenticated();
-
+export default function ProtectedPage() {
   return (
     <div className="flex-1 w-full flex flex-col gap-8">
       <header className="flex flex-col gap-2">
