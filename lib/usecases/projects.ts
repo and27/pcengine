@@ -23,6 +23,7 @@ const ACTION_ALLOWED_STATUSES: Record<LifecycleAction, ProjectStatus[]> = {
   archive: ["active", "frozen"],
   finish: ["active", "frozen"],
 };
+const ACTIVE_PROJECT_LIMIT = 3;
 
 function toProject(row: ProjectRow): Project {
   return {
@@ -55,6 +56,24 @@ function buildProjectInsert(input: NewProjectInput): ProjectInsert {
     start_date: new Date().toISOString(),
     finish_date: null,
   };
+}
+
+async function ensureActiveProjectSlotAvailable() {
+  const supabase = await createClient();
+  const { count, error } = await supabase
+    .from("projects")
+    .select("id", { count: "exact", head: true })
+    .eq("status", "active");
+
+  if (error) {
+    throw new Error(`Failed to check active projects: ${error.message}`);
+  }
+
+  if ((count ?? 0) >= ACTIVE_PROJECT_LIMIT) {
+    throw new Error(
+      `Active project limit reached (${ACTIVE_PROJECT_LIMIT}). Freeze or finish a project before launching another.`,
+    );
+  }
 }
 
 function buildProjectUpdate(input: UpdateProjectInput): ProjectUpdate {
@@ -91,6 +110,10 @@ function buildProjectUpdate(input: UpdateProjectInput): ProjectUpdate {
 }
 
 export async function createProject(input: NewProjectInput): Promise<Project> {
+  if ((input.status ?? DEFAULT_STATUS) === "active") {
+    await ensureActiveProjectSlotAvailable();
+  }
+
   const supabase = await createClient();
   const insert = buildProjectInsert(input);
 
@@ -174,6 +197,7 @@ export async function applyLifecycleAction(
 
   switch (action) {
     case "launch": {
+      await ensureActiveProjectSlotAvailable();
       update.status = "active";
       if (!project.startDate) {
         update.start_date = now;
