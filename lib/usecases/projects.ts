@@ -202,11 +202,18 @@ export async function applyLifecycleAction(
     .from("projects")
     .update(update)
     .eq("id", id)
+    .eq("status", project.status)
     .select("*")
-    .single();
+    .maybeSingle();
 
   if (error) {
     throw new Error(`Failed to ${action} project: ${error.message}`);
+  }
+
+  if (!data) {
+    throw new Error(
+      "Project status changed before update; please refresh and try again.",
+    );
   }
 
   return toProject(data);
