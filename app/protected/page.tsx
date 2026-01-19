@@ -1,43 +1,114 @@
-import { redirect } from "next/navigation";
-
+import type { ProjectStatus } from "@/lib/domain/project";
 import { createClient } from "@/lib/supabase/server";
-import { InfoIcon } from "lucide-react";
-import { FetchDataSteps } from "@/components/tutorial/fetch-data-steps";
+import { redirect } from "next/navigation";
 import { Suspense } from "react";
 
-async function UserDetails() {
-  const supabase = await createClient();
-  const { data, error } = await supabase.auth.getClaims();
+type ProjectRow = {
+  id: string;
+  name: string;
+  narrative_link: string | null;
+  why_now: string | null;
+  finish_definition: string | null;
+  status: ProjectStatus;
+  next_action: string;
+  start_date: string;
+  finish_date: string | null;
+};
 
-  if (error || !data?.claims) {
+const STATUS_LABELS: Record<ProjectStatus, string> = {
+  active: "Active",
+  frozen: "Frozen",
+  archived: "Archived",
+};
+
+async function fetchProjects(): Promise<ProjectRow[]> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("projects")
+    .select("*")
+    .order("start_date", { ascending: false });
+
+  if (error) {
+    throw new Error(`Failed to load projects: ${error.message}`);
+  }
+
+  return data ?? [];
+}
+
+function groupProjects(projects: ProjectRow[]) {
+  return {
+    active: projects.filter((project) => project.status === "active"),
+    frozen: projects.filter((project) => project.status === "frozen"),
+    archived: projects.filter((project) => project.status === "archived"),
+  };
+}
+
+function ProjectSection({
+  status,
+  projects,
+}: {
+  status: ProjectStatus;
+  projects: ProjectRow[];
+}) {
+  return (
+    <section className="flex flex-col gap-3">
+      <h2 className="text-xl font-semibold">{STATUS_LABELS[status]}</h2>
+      {projects.length === 0 ? (
+        <p className="text-sm text-muted-foreground">
+          No {STATUS_LABELS[status].toLowerCase()} projects.
+        </p>
+      ) : (
+        <ul className="flex flex-col gap-2">
+          {projects.map((project) => (
+            <li
+              key={project.id}
+              className="rounded border border-border px-4 py-3"
+            >
+              <div className="font-medium">{project.name}</div>
+              <div className="text-sm text-muted-foreground">
+                Next action: {project.next_action}
+              </div>
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
+  );
+}
+
+async function ProjectList() {
+  const supabase = await createClient();
+  const { data } = await supabase.auth.getClaims();
+
+  if (!data?.claims) {
     redirect("/auth/login");
   }
 
-  return JSON.stringify(data.claims, null, 2);
+  const projects = await fetchProjects();
+  const grouped = groupProjects(projects);
+
+  return (
+    <div className="flex flex-col gap-8">
+      <ProjectSection status="active" projects={grouped.active} />
+      <ProjectSection status="frozen" projects={grouped.frozen} />
+      <ProjectSection status="archived" projects={grouped.archived} />
+    </div>
+  );
 }
 
 export default function ProtectedPage() {
   return (
-    <div className="flex-1 w-full flex flex-col gap-12">
-      <div className="w-full">
-        <div className="bg-accent text-sm p-3 px-5 rounded-md text-foreground flex gap-3 items-center">
-          <InfoIcon size="16" strokeWidth={2} />
-          This is a protected page that you can only see as an authenticated
-          user
-        </div>
-      </div>
-      <div className="flex flex-col gap-2 items-start">
-        <h2 className="font-bold text-2xl mb-4">Your user details</h2>
-        <pre className="text-xs font-mono p-3 rounded border max-h-32 overflow-auto">
-          <Suspense>
-            <UserDetails />
-          </Suspense>
-        </pre>
-      </div>
-      <div>
-        <h2 className="font-bold text-2xl mb-4">Next steps</h2>
-        <FetchDataSteps />
-      </div>
+    <div className="flex-1 w-full flex flex-col gap-8">
+      <header className="flex flex-col gap-2">
+        <h1 className="text-2xl font-bold">Project list</h1>
+        <p className="text-sm text-muted-foreground">
+          Projects grouped by lifecycle status.
+        </p>
+      </header>
+
+      <Suspense>
+        <ProjectList />
+      </Suspense>
     </div>
   );
 }
