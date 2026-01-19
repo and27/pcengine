@@ -58,24 +58,6 @@ function buildProjectInsert(input: NewProjectInput): ProjectInsert {
   };
 }
 
-async function ensureActiveProjectSlotAvailable() {
-  const supabase = await createClient();
-  const { count, error } = await supabase
-    .from("projects")
-    .select("id", { count: "exact", head: true })
-    .eq("status", "active");
-
-  if (error) {
-    throw new Error(`Failed to check active projects: ${error.message}`);
-  }
-
-  if ((count ?? 0) >= ACTIVE_PROJECT_LIMIT) {
-    throw new Error(
-      `Active project limit reached (${ACTIVE_PROJECT_LIMIT}). Freeze or finish a project before launching another.`,
-    );
-  }
-}
-
 function buildProjectUpdate(input: UpdateProjectInput): ProjectUpdate {
   const update: ProjectUpdate = {};
 
@@ -110,21 +92,32 @@ function buildProjectUpdate(input: UpdateProjectInput): ProjectUpdate {
 }
 
 export async function createProject(input: NewProjectInput): Promise<Project> {
-  if ((input.status ?? DEFAULT_STATUS) === "active") {
-    await ensureActiveProjectSlotAvailable();
-  }
-
   const supabase = await createClient();
   const insert = buildProjectInsert(input);
+  const isActive = insert.status === "active";
 
-  const { data, error } = await supabase
-    .from("projects")
-    .insert(insert)
-    .select("*")
-    .single();
+  const { data, error } = isActive
+    ? await supabase
+        .rpc("create_project_with_active_cap", {
+          finish_definition: insert.finish_definition,
+          finish_date: insert.finish_date,
+          max_active: ACTIVE_PROJECT_LIMIT,
+          name: insert.name,
+          narrative_link: insert.narrative_link,
+          next_action: insert.next_action,
+          start_date: insert.start_date,
+          status: insert.status,
+          why_now: insert.why_now,
+        })
+        .single()
+    : await supabase.from("projects").insert(insert).select("*").single();
 
   if (error) {
     throw new Error(`Failed to create project: ${error.message}`);
+  }
+
+  if (!data) {
+    throw new Error("Project creation failed; no data returned.");
   }
 
   return toProject(data);
@@ -197,7 +190,6 @@ export async function applyLifecycleAction(
 
   switch (action) {
     case "launch": {
-      await ensureActiveProjectSlotAvailable();
       update.status = "active";
       if (!project.startDate) {
         update.start_date = now;
@@ -222,13 +214,21 @@ export async function applyLifecycleAction(
   }
 
   const supabase = await createClient();
-  const { data, error } = await supabase
-    .from("projects")
-    .update(update)
-    .eq("id", id)
-    .eq("status", project.status)
-    .select("*")
-    .maybeSingle();
+  const { data, error } =
+    action === "launch"
+      ? await supabase
+          .rpc("launch_project_with_active_cap", {
+            max_active: ACTIVE_PROJECT_LIMIT,
+            project_id: id,
+          })
+          .single()
+      : await supabase
+          .from("projects")
+          .update(update)
+          .eq("id", id)
+          .eq("status", project.status)
+          .select("*")
+          .maybeSingle();
 
   if (error) {
     throw new Error(`Failed to ${action} project: ${error.message}`);
