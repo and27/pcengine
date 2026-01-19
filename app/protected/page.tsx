@@ -17,7 +17,7 @@ type ProjectRow = {
   finish_definition: string | null;
   status: ProjectStatus;
   next_action: string;
-  start_date: string;
+  start_date: string | null;
   finish_date: string | null;
 };
 
@@ -52,7 +52,7 @@ async function fetchProjects(): Promise<ProjectRow[]> {
   const { data, error } = await supabase
     .from("projects")
     .select("*")
-    .order("start_date", { ascending: false });
+    .order("start_date", { ascending: false, nullsFirst: false });
 
   if (error) {
     throw new Error(`Failed to load projects: ${error.message}`);

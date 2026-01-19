@@ -12,7 +12,7 @@ export type Database = {
           finish_definition: string | null;
           status: ProjectStatus;
           next_action: string;
-          start_date: string;
+          start_date: string | null;
           finish_date: string | null;
         };
         Insert: {
@@ -23,7 +23,7 @@ export type Database = {
           finish_definition?: string | null;
           status: ProjectStatus;
           next_action: string;
-          start_date: string;
+          start_date?: string | null;
           finish_date?: string | null;
         };
         Update: {
@@ -34,7 +34,7 @@ export type Database = {
           finish_definition?: string | null;
           status?: ProjectStatus;
           next_action?: string;
-          start_date?: string;
+          start_date?: string | null;
           finish_date?: string | null;
         };
         Relationships: [];
@@ -52,7 +52,7 @@ export type Database = {
           finish_definition: string | null;
           status: ProjectStatus;
           next_action: string;
-          start_date: string;
+          start_date: string | null;
           finish_date: string | null;
           max_active: number;
         };
