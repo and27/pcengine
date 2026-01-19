@@ -1,0 +1,12 @@
+[api]
+enabled = false
+
+[db]
+port = 54322
+password = "postgres"
+
+[studio]
+enabled = false
+
+[auth]
+enabled = false

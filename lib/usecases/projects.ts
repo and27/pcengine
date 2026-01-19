@@ -99,15 +99,15 @@ export async function createProject(input: NewProjectInput): Promise<Project> {
   const { data, error } = isActive
     ? await supabase
         .rpc("create_project_with_active_cap", {
-          finish_definition: insert.finish_definition,
-          finish_date: insert.finish_date,
+          finish_definition: insert.finish_definition ?? null,
+          finish_date: insert.finish_date ?? null,
           max_active: ACTIVE_PROJECT_LIMIT,
           name: insert.name,
-          narrative_link: insert.narrative_link,
+          narrative_link: insert.narrative_link ?? null,
           next_action: insert.next_action,
           start_date: insert.start_date,
           status: insert.status,
-          why_now: insert.why_now,
+          why_now: insert.why_now ?? null,
         })
         .single()
     : await supabase.from("projects").insert(insert).select("*").single();
