@@ -1,5 +1,7 @@
 {
-  "name": "andreu-template",
-  "product": "Agent-ready Next.js + Supabase template",
-  "domain": "template"
+  "name": "pce",
+  "product": "Project Continuity Engine",
+  "domain": "personal-productivity",
+  "intent": "Launch → Finish → Archive system to close projects consciously",
+  "version": "0.1.0"
 }
