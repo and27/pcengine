@@ -33,7 +33,7 @@ Goal: Import repos as drafts without auto-creating projects.
 ### Tickets
 
 - [x] PCE-100 GitHub integration storage + security baseline
-- [ ] PCE-101 GitHub OAuth
+- [x] PCE-101 GitHub OAuth
 - [ ] PCE-102 List & select repos (Vercel-style)
 - [ ] PCE-103 Store imported drafts
 - [ ] PCE-104 Convert draft → Project (manual)
