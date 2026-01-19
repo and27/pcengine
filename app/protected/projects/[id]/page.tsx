@@ -8,7 +8,7 @@ import { createClient } from "@/lib/supabase/server";
 import { fetchProjectById, updateProject } from "@/lib/usecases/projects";
 
 type PageProps = {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 };
 
 function normalizeOptional(value: FormDataEntryValue | null): string | null {
@@ -111,9 +111,17 @@ async function ProjectDetail({ id }: { id: string }) {
   );
 }
 
-export default function ProjectDetailPage({ params }: PageProps) {
-  const { id } = params;
+async function ProjectDetailLoader({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}) {
+  const { id } = await params;
 
+  return <ProjectDetail id={id} />;
+}
+
+export default function ProjectDetailPage({ params }: PageProps) {
   return (
     <div className="flex-1 w-full flex flex-col gap-8">
       <header className="flex flex-col gap-2">
@@ -124,7 +132,7 @@ export default function ProjectDetailPage({ params }: PageProps) {
       </header>
 
       <Suspense>
-        <ProjectDetail id={id} />
+        <ProjectDetailLoader params={params} />
       </Suspense>
     </div>
   );
