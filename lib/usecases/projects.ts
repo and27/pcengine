@@ -23,6 +23,7 @@ const ACTION_ALLOWED_STATUSES: Record<LifecycleAction, ProjectStatus[]> = {
   archive: ["active", "frozen"],
   finish: ["active", "frozen"],
 };
+const ACTIVE_PROJECT_LIMIT = 3;
 
 function toProject(row: ProjectRow): Project {
   return {
@@ -93,15 +94,30 @@ function buildProjectUpdate(input: UpdateProjectInput): ProjectUpdate {
 export async function createProject(input: NewProjectInput): Promise<Project> {
   const supabase = await createClient();
   const insert = buildProjectInsert(input);
+  const isActive = insert.status === "active";
 
-  const { data, error } = await supabase
-    .from("projects")
-    .insert(insert)
-    .select("*")
-    .single();
+  const { data, error } = isActive
+    ? await supabase
+        .rpc("create_project_with_active_cap", {
+          finish_definition: insert.finish_definition ?? null,
+          finish_date: insert.finish_date ?? null,
+          max_active: ACTIVE_PROJECT_LIMIT,
+          name: insert.name,
+          narrative_link: insert.narrative_link ?? null,
+          next_action: insert.next_action,
+          start_date: insert.start_date,
+          status: insert.status,
+          why_now: insert.why_now ?? null,
+        })
+        .single()
+    : await supabase.from("projects").insert(insert).select("*").single();
 
   if (error) {
     throw new Error(`Failed to create project: ${error.message}`);
+  }
+
+  if (!data) {
+    throw new Error("Project creation failed; no data returned.");
   }
 
   return toProject(data);
@@ -198,13 +214,21 @@ export async function applyLifecycleAction(
   }
 
   const supabase = await createClient();
-  const { data, error } = await supabase
-    .from("projects")
-    .update(update)
-    .eq("id", id)
-    .eq("status", project.status)
-    .select("*")
-    .maybeSingle();
+  const { data, error } =
+    action === "launch"
+      ? await supabase
+          .rpc("launch_project_with_active_cap", {
+            max_active: ACTIVE_PROJECT_LIMIT,
+            project_id: id,
+          })
+          .single()
+      : await supabase
+          .from("projects")
+          .update(update)
+          .eq("id", id)
+          .eq("status", project.status)
+          .select("*")
+          .maybeSingle();
 
   if (error) {
     throw new Error(`Failed to ${action} project: ${error.message}`);

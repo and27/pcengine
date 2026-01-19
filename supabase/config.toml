@@ -1,0 +1,13 @@
+project_id = "pce-local"
+
+[api]
+enabled = false
+
+[db]
+port = 54322
+
+[studio]
+enabled = false
+
+[auth]
+enabled = false

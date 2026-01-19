@@ -20,8 +20,8 @@ Goal: Manage projects as finite narratives with clear start, execution, and clos
 - [x] PCE-001 Project domain model + persistence
 - [x] PCE-002 Project list (Active / Frozen / Archived)
 - [x] PCE-003 Project detail & edit fields
-- [ ] PCE-004 Lifecycle actions: Launch / Finish / Freeze / Archive
-- [ ] PCE-005 Enforce max 3 Active projects (hard rule)
+- [x] PCE-004 Lifecycle actions: Launch / Finish / Freeze / Archive
+- [x] PCE-005 Enforce max 3 Active projects (hard rule)
 - [ ] PCE-006 Smoke test + V0 release notes
 
 ## Epic 2 — GitHub Import as Drafts (V0.2)
