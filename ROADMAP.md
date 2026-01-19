@@ -1,5 +1,16 @@
 # PCE — Roadmap V0
 
+## V0 Finish Definition
+
+PCE V0 is considered complete when:
+
+- I can create, run, and close a project with explicit Launch → Finish.
+- The system enforces a maximum of 3 Active projects.
+- At least 1 real project is taken from Launch to Finished using PCE (no simulations).
+- I can clearly decide whether this model reduces dispersion or not.
+
+Anything beyond this is out of scope for V0.
+
 ## Epic 1 — Core Project Lifecycle (V0)
 
 Goal: Manage projects as finite narratives with clear start, execution, and closure.
