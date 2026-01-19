@@ -20,5 +20,5 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile --ignore-scripts=false
       - run: pnpm supabase db start
-      - run: pnpm supabase db reset --yes
+      - run: pnpm supabase db reset --local --no-seed
       - run: pnpm verify
