@@ -53,7 +53,7 @@ function buildProjectInsert(input: NewProjectInput): ProjectInsert {
     finish_definition: input.finishDefinition ?? null,
     status,
     next_action: input.nextAction.trim(),
-    start_date: new Date().toISOString(),
+    start_date: status === "active" ? new Date().toISOString() : null,
     finish_date: null,
   };
 }
@@ -105,7 +105,7 @@ export async function createProject(input: NewProjectInput): Promise<Project> {
           name: insert.name,
           narrative_link: insert.narrative_link ?? null,
           next_action: insert.next_action,
-          start_date: insert.start_date,
+          start_date: insert.start_date ?? null,
           status: insert.status,
           why_now: insert.why_now ?? null,
         })

@@ -5,6 +5,7 @@ import {
   applyLifecycleAction,
   type LifecycleAction,
 } from "@/lib/usecases/projects";
+import Link from "next/link";
 import { redirect } from "next/navigation";
 import { Suspense } from "react";
 
@@ -16,7 +17,7 @@ type ProjectRow = {
   finish_definition: string | null;
   status: ProjectStatus;
   next_action: string;
-  start_date: string;
+  start_date: string | null;
   finish_date: string | null;
 };
 
@@ -51,7 +52,7 @@ async function fetchProjects(): Promise<ProjectRow[]> {
   const { data, error } = await supabase
     .from("projects")
     .select("*")
-    .order("start_date", { ascending: false });
+    .order("start_date", { ascending: false, nullsFirst: false });
 
   if (error) {
     throw new Error(`Failed to load projects: ${error.message}`);
@@ -138,8 +139,13 @@ async function ProjectList() {
 export default function ProtectedPage() {
   return (
     <div className="flex-1 w-full flex flex-col gap-8">
-      <header className="flex flex-col gap-2">
-        <h1 className="text-2xl font-bold">Project list</h1>
+      <header className="flex flex-col gap-3">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <h1 className="text-2xl font-bold">Project list</h1>
+          <Button asChild>
+            <Link href="/protected/projects/new">New Project</Link>
+          </Button>
+        </div>
         <p className="text-sm text-muted-foreground">
           Projects grouped by lifecycle status.
         </p>

@@ -10,7 +10,7 @@ export type Project = {
   finishDefinition: string | null;
   status: ProjectStatus;
   nextAction: string;
-  startDate: string;
+  startDate: string | null;
   finishDate: string | null;
 };
 

@@ -23,6 +23,8 @@ Goal: Manage projects as finite narratives with clear start, execution, and clos
 - [x] PCE-004 Lifecycle actions: Launch / Finish / Freeze / Archive
 - [x] PCE-005 Enforce max 3 Active projects (hard rule)
 - [x] PCE-006 Smoke test + V0 release notes
+- [x] PCE-006 (redefinido) - Create Project flow + onboarding
+- [ ] PCE-007 — Home route points to the app (small UX fix)
 
 ## Epic 2 — GitHub Import as Drafts (V0.2)
 
