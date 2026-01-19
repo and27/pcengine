@@ -15,6 +15,14 @@ type ProjectInsert = Database["public"]["Tables"]["projects"]["Insert"];
 type ProjectUpdate = Database["public"]["Tables"]["projects"]["Update"];
 
 const DEFAULT_STATUS: ProjectStatus = "active";
+export type LifecycleAction = "launch" | "freeze" | "archive" | "finish";
+
+const ACTION_ALLOWED_STATUSES: Record<LifecycleAction, ProjectStatus[]> = {
+  launch: ["frozen"],
+  freeze: ["active"],
+  archive: ["active", "frozen"],
+  finish: ["active", "frozen"],
+};
 
 function toProject(row: ProjectRow): Project {
   return {
@@ -145,4 +153,68 @@ export async function fetchProjectById(id: string): Promise<Project | null> {
   }
 
   return data ? toProject(data) : null;
+}
+
+export async function applyLifecycleAction(
+  id: string,
+  action: LifecycleAction,
+): Promise<Project> {
+  const project = await fetchProjectById(id);
+
+  if (!project) {
+    throw new Error("Project not found.");
+  }
+
+  if (!ACTION_ALLOWED_STATUSES[action].includes(project.status)) {
+    throw new Error(`Cannot ${action} a ${project.status} project.`);
+  }
+
+  const update: ProjectUpdate = {};
+  const now = new Date().toISOString();
+
+  switch (action) {
+    case "launch": {
+      update.status = "active";
+      if (!project.startDate) {
+        update.start_date = now;
+      }
+      break;
+    }
+    case "freeze": {
+      update.status = "frozen";
+      break;
+    }
+    case "archive": {
+      update.status = "archived";
+      break;
+    }
+    case "finish": {
+      update.status = "archived";
+      if (!project.finishDate) {
+        update.finish_date = now;
+      }
+      break;
+    }
+  }
+
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("projects")
+    .update(update)
+    .eq("id", id)
+    .eq("status", project.status)
+    .select("*")
+    .maybeSingle();
+
+  if (error) {
+    throw new Error(`Failed to ${action} project: ${error.message}`);
+  }
+
+  if (!data) {
+    throw new Error(
+      "Project status changed before update; please refresh and try again.",
+    );
+  }
+
+  return toProject(data);
 }

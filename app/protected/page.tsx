@@ -1,5 +1,10 @@
 import type { ProjectStatus } from "@/lib/domain/project";
+import { Button } from "@/components/ui/button";
 import { createClient } from "@/lib/supabase/server";
+import {
+  applyLifecycleAction,
+  type LifecycleAction,
+} from "@/lib/usecases/projects";
 import { redirect } from "next/navigation";
 import { Suspense } from "react";
 
@@ -20,6 +25,26 @@ const STATUS_LABELS: Record<ProjectStatus, string> = {
   frozen: "Frozen",
   archived: "Archived",
 };
+
+const ACTION_LABELS: Record<LifecycleAction, string> = {
+  launch: "Launch",
+  freeze: "Freeze",
+  archive: "Archive",
+  finish: "Finish",
+};
+
+const ACTIONS_BY_STATUS: Record<ProjectStatus, LifecycleAction[]> = {
+  active: ["freeze", "archive", "finish"],
+  frozen: ["launch", "archive", "finish"],
+  archived: [],
+};
+
+async function handleLifecycleAction(id: string, action: LifecycleAction) {
+  "use server";
+
+  await applyLifecycleAction(id, action);
+  redirect("/protected");
+}
 
 async function fetchProjects(): Promise<ProjectRow[]> {
   const supabase = await createClient();
@@ -68,6 +93,20 @@ function ProjectSection({
               <div className="text-sm text-muted-foreground">
                 Next action: {project.next_action}
               </div>
+              {ACTIONS_BY_STATUS[project.status].length > 0 && (
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {ACTIONS_BY_STATUS[project.status].map((action) => (
+                    <form
+                      key={action}
+                      action={handleLifecycleAction.bind(null, project.id, action)}
+                    >
+                      <Button type="submit" variant="outline" size="sm">
+                        {ACTION_LABELS[action]}
+                      </Button>
+                    </form>
+                  ))}
+                </div>
+              )}
             </li>
           ))}
         </ul>
