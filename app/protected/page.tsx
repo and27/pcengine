@@ -5,6 +5,7 @@ import {
   applyLifecycleAction,
   type LifecycleAction,
 } from "@/lib/usecases/projects";
+import { getGitHubConnectionState } from "@/lib/usecases/github";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { Suspense } from "react";
@@ -126,9 +127,24 @@ async function ProjectList() {
 
   const projects = await fetchProjects();
   const grouped = groupProjects(projects);
+  const githubConnection = await getGitHubConnectionState();
 
   return (
     <div className="flex flex-col gap-8">
+      <div className="rounded border border-border px-4 py-3">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="text-sm">
+            {githubConnection.connected
+              ? `GitHub connected as ${githubConnection.githubLogin}`
+              : "GitHub not connected"}
+          </div>
+          {!githubConnection.connected && (
+            <Button asChild size="sm" variant="outline">
+              <Link href="/auth/github">Connect GitHub</Link>
+            </Button>
+          )}
+        </div>
+      </div>
       <ProjectSection status="active" projects={grouped.active} />
       <ProjectSection status="frozen" projects={grouped.frozen} />
       <ProjectSection status="archived" projects={grouped.archived} />
