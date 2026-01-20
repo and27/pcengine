@@ -2,7 +2,6 @@ import "server-only";
 
 import { createClient } from "../supabase/server";
 import type { Database } from "../supabase/types";
-import { createProject } from "./projects";
 
 type RepoDraftRow = Database["public"]["Tables"]["repo_drafts"]["Row"];
 
@@ -127,43 +126,22 @@ export async function convertRepoDraft(
     throw new Error("Not authenticated.");
   }
 
-  const draft = await fetchRepoDraftById(id);
-
-  if (!draft) {
-    throw new Error("Draft not found.");
-  }
-
-  if (draft.converted_project_id) {
-    throw new Error("Draft has already been converted.");
-  }
-
-  const project = await createProject({
-    name: input.name.trim(),
-    nextAction: input.nextAction.trim(),
-    finishDefinition: input.finishDefinition ?? null,
-    narrativeLink: draft.html_url,
-    status: "frozen",
-  });
-
-  const now = new Date().toISOString();
-  const { data: updatedDraft, error: updateError } = await supabase
-    .from("repo_drafts")
-    .update({
-      converted_project_id: project.id,
-      converted_at: now,
+  const { data: projectResult, error: convertError } = await supabase
+    .rpc("convert_repo_draft_to_project", {
+      draft_id: id,
+      project_name: input.name.trim(),
+      next_action: input.nextAction.trim(),
+      finish_definition: input.finishDefinition ?? null,
     })
-    .eq("id", id)
-    .is("converted_project_id", null)
-    .select("*")
-    .maybeSingle();
+    .single();
 
-  if (updateError) {
-    throw new Error(`Failed to mark draft as converted: ${updateError.message}`);
+  if (convertError) {
+    throw new Error(`Failed to convert draft: ${convertError.message}`);
   }
 
-  if (!updatedDraft) {
-    throw new Error("Draft was already converted.");
+  if (!projectResult?.project_id) {
+    throw new Error("Draft conversion failed.");
   }
 
-  return project.id;
+  return projectResult.project_id;
 }
