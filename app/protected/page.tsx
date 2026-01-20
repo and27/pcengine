@@ -158,9 +158,14 @@ export default function ProtectedPage() {
       <header className="flex flex-col gap-3">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <h1 className="text-2xl font-bold">Project list</h1>
-          <Button asChild>
-            <Link href="/protected/projects/new">New Project</Link>
-          </Button>
+          <div className="flex flex-wrap gap-2">
+            <Button asChild variant="outline">
+              <Link href="/protected/github">GitHub import</Link>
+            </Button>
+            <Button asChild>
+              <Link href="/protected/projects/new">New Project</Link>
+            </Button>
+          </div>
         </div>
         <p className="text-sm text-muted-foreground">
           Projects grouped by lifecycle status.
