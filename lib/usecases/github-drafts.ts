@@ -85,3 +85,63 @@ export async function fetchRepoDrafts(): Promise<RepoDraftRow[]> {
 
   return drafts ?? [];
 }
+
+export async function fetchRepoDraftById(
+  id: string,
+): Promise<RepoDraftRow | null> {
+  const supabase = await createClient();
+  const { data, error } = await supabase.auth.getClaims();
+
+  if (error || !data?.claims) {
+    throw new Error("Not authenticated.");
+  }
+
+  const { data: draft, error: draftError } = await supabase
+    .from("repo_drafts")
+    .select("*")
+    .eq("id", id)
+    .maybeSingle();
+
+  if (draftError) {
+    throw new Error(`Failed to load draft: ${draftError.message}`);
+  }
+
+  return draft ?? null;
+}
+
+export type RepoDraftConversionInput = {
+  name: string;
+  nextAction: string;
+  finishDefinition?: string | null;
+};
+
+export async function convertRepoDraft(
+  id: string,
+  input: RepoDraftConversionInput,
+): Promise<string> {
+  const supabase = await createClient();
+  const { data, error } = await supabase.auth.getClaims();
+
+  if (error || !data?.claims) {
+    throw new Error("Not authenticated.");
+  }
+
+  const { data: projectResult, error: convertError } = await supabase
+    .rpc("convert_repo_draft_to_project", {
+      draft_id: id,
+      project_name: input.name.trim(),
+      next_action: input.nextAction.trim(),
+      finish_definition: input.finishDefinition ?? null,
+    })
+    .single();
+
+  if (convertError) {
+    throw new Error(`Failed to convert draft: ${convertError.message}`);
+  }
+
+  if (!projectResult?.project_id) {
+    throw new Error("Draft conversion failed.");
+  }
+
+  return projectResult.project_id;
+}

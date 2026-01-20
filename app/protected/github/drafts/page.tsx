@@ -39,7 +39,14 @@ async function DraftList() {
           key={draft.id}
           className="rounded border border-border px-4 py-3"
         >
-          <div className="font-medium">{draft.full_name}</div>
+          <div className="font-medium">
+            <Link
+              href={`/protected/github/drafts/${draft.id}`}
+              className="underline"
+            >
+              {draft.full_name}
+            </Link>
+          </div>
           <div className="text-sm text-muted-foreground">
             {draft.visibility} · default branch {draft.default_branch} · pushed{" "}
             {formatDate(draft.pushed_at)}

@@ -150,6 +150,17 @@ export type Database = {
           github_login: string | null;
         }[];
       };
+      convert_repo_draft_to_project: {
+        Args: {
+          draft_id: string;
+          project_name: string;
+          next_action: string;
+          finish_definition: string | null;
+        };
+        Returns: {
+          project_id: string;
+        }[];
+      };
     };
     Enums: {
       [_ in never]: never;
