@@ -1,4 +1,5 @@
 import type { ProjectStatus } from "@/lib/domain/project";
+import { LifecycleActionButton } from "@/components/lifecycle-action-button";
 import { Button } from "@/components/ui/button";
 import { createClient } from "@/lib/supabase/server";
 import {
@@ -45,7 +46,6 @@ async function handleLifecycleAction(id: string, action: LifecycleAction) {
   "use server";
 
   await applyLifecycleAction(id, action);
-  redirect("/protected");
 }
 
 async function fetchProjects(): Promise<ProjectRow[]> {
@@ -98,14 +98,14 @@ function ProjectSection({
               {ACTIONS_BY_STATUS[project.status].length > 0 && (
                 <div className="mt-3 flex flex-wrap gap-2">
                   {ACTIONS_BY_STATUS[project.status].map((action) => (
-                    <form
-                      key={action}
-                      action={handleLifecycleAction.bind(null, project.id, action)}
-                    >
-                      <Button type="submit" variant="outline" size="sm">
-                        {ACTION_LABELS[action]}
-                      </Button>
-                    </form>
+                    <div key={action}>
+                      <LifecycleActionButton
+                        id={project.id}
+                        action={action}
+                        label={ACTION_LABELS[action]}
+                        onAction={handleLifecycleAction}
+                      />
+                    </div>
                   ))}
                 </div>
               )}

@@ -25,6 +25,7 @@ Goal: Manage projects as finite narratives with clear start, execution, and clos
 - [x] PCE-006 Smoke test + V0 release notes
 - [x] PCE-006 (redefinido) - Create Project flow + onboarding
 - [x] PCE-007 - Home route points to the app (small UX fix)
+- [x] PCE-008 - Lifecycle action errors show toast (Sonner)
 
 ## Epic 2 — GitHub Import as Drafts (V0.2)
 
