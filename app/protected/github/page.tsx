@@ -1,9 +1,12 @@
 import { Suspense } from "react";
 import { redirect } from "next/navigation";
 
+import Link from "next/link";
+
 import { Button } from "@/components/ui/button";
 import { createClient } from "@/lib/supabase/server";
 import { getGitHubAccessToken } from "@/lib/usecases/github";
+import { upsertRepoDrafts } from "@/lib/usecases/github-drafts";
 
 type GitHubRepo = {
   id: number;
@@ -41,6 +44,10 @@ function encodePayload(payload: ImportPayload) {
   return encodeURIComponent(JSON.stringify(payload));
 }
 
+function decodePayload(value: string): ImportPayload {
+  return JSON.parse(decodeURIComponent(value)) as ImportPayload;
+}
+
 async function fetchGitHubRepos(token: string): Promise<GitHubRepo[]> {
   const response = await fetch(
     "https://api.github.com/user/repos?per_page=100&sort=pushed",
@@ -69,8 +76,13 @@ async function importSelectedRepos(formData: FormData) {
     redirect("/protected/github?import=empty");
   }
 
-  // PCE-103 will persist drafts. For now, acknowledge the request.
-  redirect(`/protected/github?imported=${selected.length}`);
+  const payloads = selected
+    .filter((value): value is string => typeof value === "string")
+    .map(decodePayload);
+
+  const importedCount = await upsertRepoDrafts(payloads);
+
+  redirect(`/protected/github/drafts?imported=${importedCount}`);
 }
 
 async function RepoList() {
@@ -95,7 +107,12 @@ async function RepoList() {
         <div className="text-sm text-muted-foreground">
           Select repositories to import as drafts.
         </div>
-        <Button type="submit">Import selected</Button>
+        <div className="flex flex-wrap gap-2">
+          <Button asChild type="button" variant="outline">
+            <Link href="/protected/github/drafts">View drafts</Link>
+          </Button>
+          <Button type="submit">Import selected</Button>
+        </div>
       </div>
 
       <div className="flex flex-col gap-2">
