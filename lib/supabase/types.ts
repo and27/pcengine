@@ -3,6 +3,36 @@ import type { ProjectStatus } from "../domain/project";
 export type Database = {
   public: {
     Tables: {
+      github_connections: {
+        Row: {
+          id: string;
+          user_id: string;
+          github_user_id: number;
+          github_login: string;
+          access_token: string;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          github_user_id: number;
+          github_login: string;
+          access_token: string;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          github_user_id?: number;
+          github_login?: string;
+          access_token?: string;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
       projects: {
         Row: {
           id: string;
@@ -64,6 +94,13 @@ export type Database = {
           max_active: number;
         };
         Returns: Database["public"]["Tables"]["projects"]["Row"];
+      };
+      get_github_connection_state: {
+        Args: Record<string, never>;
+        Returns: {
+          connected: boolean;
+          github_login: string | null;
+        }[];
       };
     };
     Enums: {
