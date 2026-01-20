@@ -33,6 +33,54 @@ export type Database = {
         };
         Relationships: [];
       };
+      repo_drafts: {
+        Row: {
+          id: string;
+          user_id: string;
+          github_repo_id: number;
+          full_name: string;
+          html_url: string;
+          description: string | null;
+          visibility: string;
+          default_branch: string;
+          pushed_at: string | null;
+          topics: string[] | null;
+          imported_at: string;
+          converted_project_id: string | null;
+          converted_at: string | null;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          github_repo_id: number;
+          full_name: string;
+          html_url: string;
+          description?: string | null;
+          visibility: string;
+          default_branch: string;
+          pushed_at?: string | null;
+          topics?: string[] | null;
+          imported_at?: string;
+          converted_project_id?: string | null;
+          converted_at?: string | null;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          github_repo_id?: number;
+          full_name?: string;
+          html_url?: string;
+          description?: string | null;
+          visibility?: string;
+          default_branch?: string;
+          pushed_at?: string | null;
+          topics?: string[] | null;
+          imported_at?: string;
+          converted_project_id?: string | null;
+          converted_at?: string | null;
+        };
+        Relationships: [];
+      };
       projects: {
         Row: {
           id: string;
