@@ -95,6 +95,13 @@ export type Database = {
         };
         Returns: Database["public"]["Tables"]["projects"]["Row"];
       };
+      get_github_connection_state: {
+        Args: Record<string, never>;
+        Returns: {
+          connected: boolean;
+          github_login: string | null;
+        }[];
+      };
     };
     Enums: {
       [_ in never]: never;
