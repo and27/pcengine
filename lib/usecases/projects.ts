@@ -32,11 +32,21 @@ export type ProjectSnapshotInput = {
   futureNote?: string | null;
 };
 
+export type OverrideDecisionInput = {
+  reason: string;
+  tradeOff: string;
+};
+
 type SnapshotPayload = {
   summary: string;
   label: string | null;
   leftOut: string | null;
   futureNote: string | null;
+};
+
+type DecisionPayload = {
+  reason: string;
+  tradeOff: string;
 };
 
 function normalizeSnapshotValue(value: string | null | undefined): string | null {
@@ -58,6 +68,24 @@ function buildSnapshotPayload(input: ProjectSnapshotInput): SnapshotPayload {
     label: normalizeSnapshotValue(input.label),
     leftOut: normalizeSnapshotValue(input.leftOut),
     futureNote: normalizeSnapshotValue(input.futureNote),
+  };
+}
+
+function buildDecisionPayload(input: OverrideDecisionInput): DecisionPayload {
+  if (typeof input.reason !== "string" || input.reason.trim().length === 0) {
+    throw new Error("Decision reason is required.");
+  }
+
+  if (
+    typeof input.tradeOff !== "string" ||
+    input.tradeOff.trim().length === 0
+  ) {
+    throw new Error("Decision trade-off is required.");
+  }
+
+  return {
+    reason: input.reason.trim(),
+    tradeOff: input.tradeOff.trim(),
   };
 }
 
@@ -291,6 +319,9 @@ export async function applyLifecycleAction(
           .maybeSingle();
 
   if (error) {
+    if (action === "launch" && error.message === "ACTIVE_CAP_REACHED") {
+      throw new Error("ACTIVE_CAP_REACHED");
+    }
     throw new Error(`Failed to ${action} project: ${error.message}`);
   }
 
@@ -298,6 +329,49 @@ export async function applyLifecycleAction(
     throw new Error(
       "Project status changed before update; please refresh and try again.",
     );
+  }
+
+  return toProject(data);
+}
+
+export async function overrideActiveCap(
+  launchProjectId: string,
+  freezeProjectId: string,
+  snapshot: ProjectSnapshotInput,
+  decision: OverrideDecisionInput,
+): Promise<Project> {
+  if (!launchProjectId || !freezeProjectId) {
+    throw new Error("Project id is required.");
+  }
+
+  if (launchProjectId === freezeProjectId) {
+    throw new Error("Override requires two different projects.");
+  }
+
+  const snapshotPayload = buildSnapshotPayload(snapshot);
+  const decisionPayload = buildDecisionPayload(decision);
+
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .rpc("override_active_cap_with_freeze", {
+      project_to_launch_id: launchProjectId,
+      project_to_freeze_id: freezeProjectId,
+      snapshot_summary: snapshotPayload.summary,
+      snapshot_label: snapshotPayload.label,
+      snapshot_left_out: snapshotPayload.leftOut,
+      snapshot_future_note: snapshotPayload.futureNote,
+      decision_reason: decisionPayload.reason,
+      decision_trade_off: decisionPayload.tradeOff,
+      max_active: ACTIVE_PROJECT_LIMIT,
+    })
+    .single();
+
+  if (error) {
+    throw new Error(`Failed to override active cap: ${error.message}`);
+  }
+
+  if (!data) {
+    throw new Error("Override failed; no data returned.");
   }
 
   return toProject(data);

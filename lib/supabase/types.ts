@@ -114,6 +114,33 @@ export type Database = {
           };
           Relationships: [];
         };
+        project_decisions: {
+          Row: {
+            id: string;
+            project_id: string;
+            decision_type: string;
+            reason: string;
+            trade_off: string;
+            created_at: string;
+          };
+          Insert: {
+            id?: string;
+            project_id: string;
+            decision_type: string;
+            reason: string;
+            trade_off: string;
+            created_at?: string;
+          };
+          Update: {
+            id?: string;
+            project_id?: string;
+            decision_type?: string;
+            reason?: string;
+            trade_off?: string;
+            created_at?: string;
+          };
+          Relationships: [];
+        };
         projects: {
           Row: {
             id: string;
@@ -193,6 +220,20 @@ export type Database = {
             snapshot_label: string | null;
             snapshot_left_out: string | null;
             snapshot_future_note: string | null;
+          };
+          Returns: Database["public"]["Tables"]["projects"]["Row"];
+        };
+        override_active_cap_with_freeze: {
+          Args: {
+            project_to_launch_id: string;
+            project_to_freeze_id: string;
+            snapshot_summary: string;
+            snapshot_label: string | null;
+            snapshot_left_out: string | null;
+            snapshot_future_note: string | null;
+            decision_reason: string;
+            decision_trade_off: string;
+            max_active: number;
           };
           Returns: Database["public"]["Tables"]["projects"]["Row"];
         };
