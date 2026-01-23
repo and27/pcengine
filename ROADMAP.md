@@ -45,7 +45,18 @@ Goal: Improve visibility when managing many projects.
 
 ### Tickets
 
-- [ ] PCE-201 Dashboard board view (columns)
-- [ ] PCE-202 Post-create redirect & feedback
-- [ ] PCE-203 Restart archived project as new cycle
-- [ ] PCE-204 Delete archived projects (manual cleanup)
+- [x] PCE-201 Dashboard board view (columns)
+- [x] PCE-202 Post-create redirect & feedback
+- [x] PCE-203 Restart archived project as new cycle
+- [x] PCE-204 Delete archived projects (manual cleanup)
+
+## Epic 4 - Insights & Review (V1.1)
+
+Goal: Add lightweight insights and a review flow, plus mobile responsiveness polish.
+
+### Tickets
+
+- [ ] PCE-301 Insights overview (status counts + active cap)
+- [ ] PCE-302 Review mode (weekly checklist + stale next actions)
+- [ ] PCE-303 Review history (last reviewed timestamp per project)
+- [ ] PCE-304 Mobile responsiveness pass (dashboard, drafts, forms)
