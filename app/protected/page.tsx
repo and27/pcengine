@@ -209,7 +209,9 @@ async function ProjectBoard() {
 export default function ProtectedPage() {
   return (
     <div className="flex-1 w-full flex flex-col gap-8">
-      <FeedbackToast />
+      <Suspense fallback={null}>
+        <FeedbackToast />
+      </Suspense>
       <header className="flex flex-col gap-3">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <h1 className="text-2xl font-bold">Dashboard</h1>
