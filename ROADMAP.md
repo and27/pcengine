@@ -48,3 +48,4 @@ Goal: Improve visibility when managing many projects.
 - [ ] PCE-201 Dashboard board view (columns)
 - [ ] PCE-202 Post-create redirect & feedback
 - [ ] PCE-203 Restart archived project as new cycle
+- [ ] PCE-204 Delete archived projects (manual cleanup)
