@@ -3,6 +3,11 @@ import { DeleteArchivedProjectButton } from "@/components/delete-archived-projec
 import { FeedbackToast } from "@/components/feedback-toast";
 import { LifecycleActionButton } from "@/components/lifecycle-action-button";
 import { RestartCycleButton } from "@/components/restart-cycle-button";
+import {
+  SnapshotActionButton,
+  type SnapshotAction,
+  type SnapshotInput,
+} from "@/components/snapshot-action-button";
 import { Button } from "@/components/ui/button";
 import { createClient } from "@/lib/supabase/server";
 import {
@@ -48,6 +53,8 @@ const ACTION_LABELS: Record<LifecycleAction, string> = {
   finish: "Finish",
 };
 
+const SNAPSHOT_ACTIONS = new Set<LifecycleAction>(["freeze", "finish"]);
+
 const ACTIONS_BY_STATUS: Record<ProjectStatus, LifecycleAction[]> = {
   active: ["freeze", "archive", "finish"],
   frozen: ["launch", "archive", "finish"],
@@ -58,6 +65,16 @@ async function handleLifecycleAction(id: string, action: LifecycleAction) {
   "use server";
 
   await applyLifecycleAction(id, action);
+}
+
+async function handleSnapshotAction(
+  id: string,
+  action: SnapshotAction,
+  snapshot: SnapshotInput,
+) {
+  "use server";
+
+  await applyLifecycleAction(id, action, snapshot);
 }
 
 async function handleRestartCycle(id: string, nextAction: string) {
@@ -130,12 +147,21 @@ function ProjectColumn({
                 <div className="mt-3 flex flex-wrap gap-2">
                   {ACTIONS_BY_STATUS[project.status].map((action) => (
                     <div key={action}>
-                      <LifecycleActionButton
-                        id={project.id}
-                        action={action}
-                        label={ACTION_LABELS[action]}
-                        onAction={handleLifecycleAction}
-                      />
+                      {SNAPSHOT_ACTIONS.has(action) ? (
+                        <SnapshotActionButton
+                          id={project.id}
+                          action={action as SnapshotAction}
+                          label={ACTION_LABELS[action]}
+                          onAction={handleSnapshotAction}
+                        />
+                      ) : (
+                        <LifecycleActionButton
+                          id={project.id}
+                          action={action}
+                          label={ACTION_LABELS[action]}
+                          onAction={handleLifecycleAction}
+                        />
+                      )}
                     </div>
                   ))}
                 </div>

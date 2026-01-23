@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { createClient } from "@/lib/supabase/server";
+import { fetchProjectSnapshots } from "@/lib/usecases/project-snapshots";
 import { fetchProjectById, updateProject } from "@/lib/usecases/projects";
 
 type PageProps = {
@@ -18,6 +19,14 @@ function normalizeOptional(value: FormDataEntryValue | null): string | null {
 
   const trimmed = value.trim();
   return trimmed.length === 0 ? null : trimmed;
+}
+
+function formatDate(value: string | null) {
+  if (!value) {
+    return "-";
+  }
+
+  return new Date(value).toLocaleDateString();
 }
 
 async function saveProject(id: string, formData: FormData) {
@@ -55,59 +64,110 @@ async function ProjectDetail({ id }: { id: string }) {
     notFound();
   }
 
+  const snapshots = await fetchProjectSnapshots(id);
+  const statusLabel =
+    project.status === "archived"
+      ? project.finishDate
+        ? "Finished"
+        : "Archived"
+      : project.status;
+
   return (
-    <form className="flex flex-col gap-6" action={saveProject.bind(null, id)}>
-      <div className="grid gap-2">
-        <Label htmlFor="name">Name</Label>
-        <Input id="name" name="name" defaultValue={project.name} required />
-      </div>
+    <div className="flex flex-col gap-8">
+      <form className="flex flex-col gap-6" action={saveProject.bind(null, id)}>
+        <div className="grid gap-2">
+          <Label htmlFor="name">Name</Label>
+          <Input id="name" name="name" defaultValue={project.name} required />
+        </div>
 
-      <div className="grid gap-2">
-        <Label htmlFor="narrativeLink">Narrative link</Label>
-        <Input
-          id="narrativeLink"
-          name="narrativeLink"
-          defaultValue={project.narrativeLink ?? ""}
-        />
-      </div>
+        <div className="grid gap-2">
+          <Label htmlFor="narrativeLink">Narrative link</Label>
+          <Input
+            id="narrativeLink"
+            name="narrativeLink"
+            defaultValue={project.narrativeLink ?? ""}
+          />
+        </div>
 
-      <div className="grid gap-2">
-        <Label htmlFor="whyNow">Why now</Label>
-        <textarea
-          id="whyNow"
-          name="whyNow"
-          defaultValue={project.whyNow ?? ""}
-          className="min-h-24 rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-        />
-      </div>
+        <div className="grid gap-2">
+          <Label htmlFor="whyNow">Why now</Label>
+          <textarea
+            id="whyNow"
+            name="whyNow"
+            defaultValue={project.whyNow ?? ""}
+            className="min-h-24 rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+          />
+        </div>
 
-      <div className="grid gap-2">
-        <Label htmlFor="finishDefinition">Finish definition</Label>
-        <textarea
-          id="finishDefinition"
-          name="finishDefinition"
-          defaultValue={project.finishDefinition ?? ""}
-          className="min-h-24 rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-        />
-      </div>
+        <div className="grid gap-2">
+          <Label htmlFor="finishDefinition">Finish definition</Label>
+          <textarea
+            id="finishDefinition"
+            name="finishDefinition"
+            defaultValue={project.finishDefinition ?? ""}
+            className="min-h-24 rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+          />
+        </div>
 
-      <div className="grid gap-2">
-        <Label htmlFor="nextAction">Next action</Label>
-        <Input
-          id="nextAction"
-          name="nextAction"
-          defaultValue={project.nextAction}
-          required
-        />
-      </div>
+        <div className="grid gap-2">
+          <Label htmlFor="nextAction">Next action</Label>
+          <Input
+            id="nextAction"
+            name="nextAction"
+            defaultValue={project.nextAction}
+            required
+          />
+        </div>
 
-      <div className="flex items-center gap-3">
-        <Button type="submit">Save changes</Button>
-        <span className="text-sm text-muted-foreground">
-          Status: {project.status}
-        </span>
-      </div>
-    </form>
+        <div className="flex items-center gap-3">
+          <Button type="submit">Save changes</Button>
+          <span className="text-sm text-muted-foreground">
+            Status: {statusLabel}
+          </span>
+        </div>
+      </form>
+
+      <section className="flex flex-col gap-3">
+        <h2 className="text-lg font-semibold">Snapshots</h2>
+        {snapshots.length === 0 ? (
+          <p className="text-sm text-muted-foreground">
+            No snapshots captured yet.
+          </p>
+        ) : (
+          <ul className="flex flex-col gap-3">
+            {snapshots.map((snapshot) => (
+              <li
+                key={snapshot.id}
+                className="rounded border border-border px-4 py-3"
+              >
+                <div className="text-sm text-muted-foreground">
+                  {snapshot.kind === "freeze"
+                    ? "Freeze snapshot"
+                    : "Finish snapshot"}{" "}
+                  - {formatDate(snapshot.created_at)}
+                </div>
+                <div className="font-medium">{snapshot.summary}</div>
+                {snapshot.label && (
+                  <div className="text-sm text-muted-foreground">
+                    Label: {snapshot.label}
+                  </div>
+                )}
+                {snapshot.left_out && (
+                  <div className="text-sm text-muted-foreground">
+                    Left out: {snapshot.left_out}
+                  </div>
+                )}
+                {snapshot.future_note && (
+                  <div className="text-sm text-muted-foreground">
+                    Future note: {snapshot.future_note}
+                  </div>
+                )}
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+    </div>
   );
 }
 
