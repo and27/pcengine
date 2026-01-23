@@ -50,10 +50,10 @@ async function handleLifecycleAction(id: string, action: LifecycleAction) {
   await applyLifecycleAction(id, action);
 }
 
-async function handleRestartCycle(id: string) {
+async function handleRestartCycle(id: string, nextAction: string) {
   "use server";
 
-  await restartArchivedProject(id);
+  await restartArchivedProject(id, nextAction);
 }
 
 async function fetchProjects(): Promise<ProjectRow[]> {

@@ -243,10 +243,15 @@ export async function applyLifecycleAction(
   return toProject(data);
 }
 
-export async function restartArchivedProject(id: string): Promise<Project> {
+export async function restartArchivedProject(
+  id: string,
+  nextAction: string,
+): Promise<Project> {
   if (!id) {
     throw new Error("Project id is required.");
   }
+
+  assertNextAction(nextAction);
 
   const project = await fetchProjectById(id);
 
@@ -266,7 +271,7 @@ export async function restartArchivedProject(id: string): Promise<Project> {
     why_now: project.whyNow,
     finish_definition: project.finishDefinition,
     status: "frozen",
-    next_action: "",
+    next_action: nextAction.trim(),
     start_date: null,
     finish_date: null,
   };
