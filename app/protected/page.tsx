@@ -1,4 +1,5 @@
 import type { ProjectStatus } from "@/lib/domain/project";
+import { FeedbackToast } from "@/components/feedback-toast";
 import { LifecycleActionButton } from "@/components/lifecycle-action-button";
 import { Button } from "@/components/ui/button";
 import { createClient } from "@/lib/supabase/server";
@@ -155,6 +156,7 @@ async function ProjectList() {
 export default function ProtectedPage() {
   return (
     <div className="flex-1 w-full flex flex-col gap-8">
+      <FeedbackToast />
       <header className="flex flex-col gap-3">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <h1 className="text-2xl font-bold">Project list</h1>
