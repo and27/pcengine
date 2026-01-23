@@ -42,6 +42,7 @@ export function DeleteArchivedProjectButton({
       },
       cancel: {
         label: "Cancel",
+        onClick: () => {},
       },
     });
   };
