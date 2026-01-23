@@ -242,3 +242,49 @@ export async function applyLifecycleAction(
 
   return toProject(data);
 }
+
+export async function restartArchivedProject(id: string): Promise<Project> {
+  if (!id) {
+    throw new Error("Project id is required.");
+  }
+
+  const project = await fetchProjectById(id);
+
+  if (!project) {
+    throw new Error("Project not found.");
+  }
+
+  if (project.status !== "archived") {
+    throw new Error("Only archived projects can be restarted.");
+  }
+
+  assertProjectName(project.name);
+
+  const insert: ProjectInsert = {
+    name: project.name,
+    narrative_link: project.narrativeLink,
+    why_now: project.whyNow,
+    finish_definition: project.finishDefinition,
+    status: "frozen",
+    next_action: "",
+    start_date: null,
+    finish_date: null,
+  };
+
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("projects")
+    .insert(insert)
+    .select("*")
+    .single();
+
+  if (error) {
+    throw new Error(`Failed to restart project: ${error.message}`);
+  }
+
+  if (!data) {
+    throw new Error("Project restart failed; no data returned.");
+  }
+
+  return toProject(data);
+}
