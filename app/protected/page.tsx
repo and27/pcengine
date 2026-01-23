@@ -1,11 +1,13 @@
 import type { ProjectStatus } from "@/lib/domain/project";
 import { FeedbackToast } from "@/components/feedback-toast";
 import { LifecycleActionButton } from "@/components/lifecycle-action-button";
+import { RestartCycleButton } from "@/components/restart-cycle-button";
 import { Button } from "@/components/ui/button";
 import { createClient } from "@/lib/supabase/server";
 import {
   applyLifecycleAction,
   type LifecycleAction,
+  restartArchivedProject,
 } from "@/lib/usecases/projects";
 import { getGitHubConnectionState } from "@/lib/usecases/github";
 import { fetchRepoDrafts } from "@/lib/usecases/github-drafts";
@@ -54,6 +56,12 @@ async function handleLifecycleAction(id: string, action: LifecycleAction) {
   "use server";
 
   await applyLifecycleAction(id, action);
+}
+
+async function handleRestartCycle(id: string, nextAction: string) {
+  "use server";
+
+  await restartArchivedProject(id, nextAction);
 }
 
 async function fetchProjects(): Promise<ProjectRow[]> {
@@ -122,6 +130,14 @@ function ProjectColumn({
                       />
                     </div>
                   ))}
+                </div>
+              )}
+              {project.status === "archived" && (
+                <div className="mt-3">
+                  <RestartCycleButton
+                    id={project.id}
+                    onRestart={handleRestartCycle}
+                  />
                 </div>
               )}
             </li>
