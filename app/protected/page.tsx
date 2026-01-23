@@ -8,6 +8,7 @@ import {
   type LifecycleAction,
 } from "@/lib/usecases/projects";
 import { getGitHubConnectionState } from "@/lib/usecases/github";
+import { fetchRepoDrafts } from "@/lib/usecases/github-drafts";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { Suspense } from "react";
@@ -22,6 +23,12 @@ type ProjectRow = {
   next_action: string;
   start_date: string | null;
   finish_date: string | null;
+};
+
+type DraftRow = {
+  id: string;
+  full_name: string;
+  converted_project_id: string | null;
 };
 
 const STATUS_LABELS: Record<ProjectStatus, string> = {
@@ -71,7 +78,7 @@ function groupProjects(projects: ProjectRow[]) {
   };
 }
 
-function ProjectSection({
+function ProjectColumn({
   status,
   projects,
 }: {
@@ -92,9 +99,16 @@ function ProjectSection({
               key={project.id}
               className="rounded border border-border px-4 py-3"
             >
-              <div className="font-medium">{project.name}</div>
+              <div className="font-medium">
+                <Link
+                  href={`/protected/projects/${project.id}`}
+                  className="underline"
+                >
+                  {project.name}
+                </Link>
+              </div>
               <div className="text-sm text-muted-foreground">
-                Next action: {project.next_action}
+                Next action: {project.next_action || "-"}
               </div>
               {ACTIONS_BY_STATUS[project.status].length > 0 && (
                 <div className="mt-3 flex flex-wrap gap-2">
@@ -118,7 +132,41 @@ function ProjectSection({
   );
 }
 
-async function ProjectList() {
+function DraftColumn({ drafts }: { drafts: DraftRow[] }) {
+  return (
+    <section className="flex flex-col gap-3">
+      <h2 className="text-xl font-semibold">Drafts</h2>
+      {drafts.length === 0 ? (
+        <p className="text-sm text-muted-foreground">
+          No drafts waiting for conversion.
+        </p>
+      ) : (
+        <ul className="flex flex-col gap-2">
+          {drafts.map((draft) => (
+            <li
+              key={draft.id}
+              className="rounded border border-border px-4 py-3"
+            >
+              <div className="font-medium">
+                <Link
+                  href={`/protected/github/drafts/${draft.id}`}
+                  className="underline"
+                >
+                  {draft.full_name}
+                </Link>
+              </div>
+              <div className="text-sm text-muted-foreground">
+                Awaiting conversion.
+              </div>
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
+  );
+}
+
+async function ProjectBoard() {
   const supabase = await createClient();
   const { data } = await supabase.auth.getClaims();
 
@@ -128,7 +176,9 @@ async function ProjectList() {
 
   const projects = await fetchProjects();
   const grouped = groupProjects(projects);
+  const drafts = await fetchRepoDrafts();
   const githubConnection = await getGitHubConnectionState();
+  const pendingDrafts = drafts.filter((draft) => !draft.converted_project_id);
 
   return (
     <div className="flex flex-col gap-8">
@@ -146,9 +196,12 @@ async function ProjectList() {
           )}
         </div>
       </div>
-      <ProjectSection status="active" projects={grouped.active} />
-      <ProjectSection status="frozen" projects={grouped.frozen} />
-      <ProjectSection status="archived" projects={grouped.archived} />
+      <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-4">
+        <DraftColumn drafts={pendingDrafts} />
+        <ProjectColumn status="active" projects={grouped.active} />
+        <ProjectColumn status="frozen" projects={grouped.frozen} />
+        <ProjectColumn status="archived" projects={grouped.archived} />
+      </div>
     </div>
   );
 }
@@ -159,7 +212,7 @@ export default function ProtectedPage() {
       <FeedbackToast />
       <header className="flex flex-col gap-3">
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <h1 className="text-2xl font-bold">Project list</h1>
+          <h1 className="text-2xl font-bold">Dashboard</h1>
           <div className="flex flex-wrap gap-2">
             <Button asChild variant="outline">
               <Link href="/protected/github">GitHub import</Link>
@@ -170,12 +223,12 @@ export default function ProtectedPage() {
           </div>
         </div>
         <p className="text-sm text-muted-foreground">
-          Projects grouped by lifecycle status.
+          Board view of drafts and projects by status.
         </p>
       </header>
 
       <Suspense>
-        <ProjectList />
+        <ProjectBoard />
       </Suspense>
     </div>
   );
