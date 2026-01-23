@@ -33,11 +33,11 @@ export type Database = {
         };
         Relationships: [];
       };
-      repo_drafts: {
-        Row: {
-          id: string;
-          user_id: string;
-          github_repo_id: number;
+        repo_drafts: {
+          Row: {
+            id: string;
+            user_id: string;
+            github_repo_id: number;
           full_name: string;
           html_url: string;
           description: string | null;
@@ -78,13 +78,46 @@ export type Database = {
           imported_at?: string;
           converted_project_id?: string | null;
           converted_at?: string | null;
+          };
+          Relationships: [];
         };
-        Relationships: [];
-      };
-      projects: {
-        Row: {
-          id: string;
-          name: string;
+        project_snapshots: {
+          Row: {
+            id: string;
+            project_id: string;
+            kind: string;
+            label: string | null;
+            summary: string;
+            left_out: string | null;
+            future_note: string | null;
+            created_at: string;
+          };
+          Insert: {
+            id?: string;
+            project_id: string;
+            kind: string;
+            label?: string | null;
+            summary: string;
+            left_out?: string | null;
+            future_note?: string | null;
+            created_at?: string;
+          };
+          Update: {
+            id?: string;
+            project_id?: string;
+            kind?: string;
+            label?: string | null;
+            summary?: string;
+            left_out?: string | null;
+            future_note?: string | null;
+            created_at?: string;
+          };
+          Relationships: [];
+        };
+        projects: {
+          Row: {
+            id: string;
+            name: string;
           narrative_link: string | null;
           why_now: string | null;
           finish_definition: string | null;
@@ -136,17 +169,37 @@ export type Database = {
         };
         Returns: Database["public"]["Tables"]["projects"]["Row"];
       };
-      launch_project_with_active_cap: {
-        Args: {
-          project_id: string;
-          max_active: number;
+        launch_project_with_active_cap: {
+          Args: {
+            project_id: string;
+            max_active: number;
+          };
+          Returns: Database["public"]["Tables"]["projects"]["Row"];
         };
-        Returns: Database["public"]["Tables"]["projects"]["Row"];
-      };
-      get_github_connection_state: {
-        Args: Record<string, never>;
-        Returns: {
-          connected: boolean;
+        freeze_project_with_snapshot: {
+          Args: {
+            project_id: string;
+            snapshot_summary: string;
+            snapshot_label: string | null;
+            snapshot_left_out: string | null;
+            snapshot_future_note: string | null;
+          };
+          Returns: Database["public"]["Tables"]["projects"]["Row"];
+        };
+        finish_project_with_snapshot: {
+          Args: {
+            project_id: string;
+            snapshot_summary: string;
+            snapshot_label: string | null;
+            snapshot_left_out: string | null;
+            snapshot_future_note: string | null;
+          };
+          Returns: Database["public"]["Tables"]["projects"]["Row"];
+        };
+        get_github_connection_state: {
+          Args: Record<string, never>;
+          Returns: {
+            connected: boolean;
           github_login: string | null;
         }[];
       };

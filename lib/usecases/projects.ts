@@ -25,6 +25,42 @@ const ACTION_ALLOWED_STATUSES: Record<LifecycleAction, ProjectStatus[]> = {
 };
 const ACTIVE_PROJECT_LIMIT = 3;
 
+export type ProjectSnapshotInput = {
+  summary: string;
+  label?: string | null;
+  leftOut?: string | null;
+  futureNote?: string | null;
+};
+
+type SnapshotPayload = {
+  summary: string;
+  label: string | null;
+  leftOut: string | null;
+  futureNote: string | null;
+};
+
+function normalizeSnapshotValue(value: string | null | undefined): string | null {
+  if (typeof value !== "string") {
+    return null;
+  }
+
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed : null;
+}
+
+function buildSnapshotPayload(input: ProjectSnapshotInput): SnapshotPayload {
+  if (typeof input.summary !== "string" || input.summary.trim().length === 0) {
+    throw new Error("Snapshot summary is required.");
+  }
+
+  return {
+    summary: input.summary.trim(),
+    label: normalizeSnapshotValue(input.label),
+    leftOut: normalizeSnapshotValue(input.leftOut),
+    futureNote: normalizeSnapshotValue(input.futureNote),
+  };
+}
+
 function toProject(row: ProjectRow): Project {
   return {
     id: row.id,
@@ -174,6 +210,7 @@ export async function fetchProjectById(id: string): Promise<Project | null> {
 export async function applyLifecycleAction(
   id: string,
   action: LifecycleAction,
+  snapshot?: ProjectSnapshotInput,
 ): Promise<Project> {
   const project = await fetchProjectById(id);
 
@@ -183,6 +220,40 @@ export async function applyLifecycleAction(
 
   if (!ACTION_ALLOWED_STATUSES[action].includes(project.status)) {
     throw new Error(`Cannot ${action} a ${project.status} project.`);
+  }
+
+  if (action === "freeze" || action === "finish") {
+    if (!snapshot) {
+      throw new Error("Snapshot is required for this action.");
+    }
+
+    const payload = buildSnapshotPayload(snapshot);
+    const supabase = await createClient();
+    const rpcName =
+      action === "freeze"
+        ? "freeze_project_with_snapshot"
+        : "finish_project_with_snapshot";
+    const { data, error } = await supabase
+      .rpc(rpcName, {
+        project_id: id,
+        snapshot_summary: payload.summary,
+        snapshot_label: payload.label,
+        snapshot_left_out: payload.leftOut,
+        snapshot_future_note: payload.futureNote,
+      })
+      .single();
+
+    if (error) {
+      throw new Error(`Failed to ${action} project: ${error.message}`);
+    }
+
+    if (!data) {
+      throw new Error(
+        "Project status changed before update; please refresh and try again.",
+      );
+    }
+
+    return toProject(data);
   }
 
   const update: ProjectUpdate = {};
@@ -196,19 +267,8 @@ export async function applyLifecycleAction(
       }
       break;
     }
-    case "freeze": {
-      update.status = "frozen";
-      break;
-    }
     case "archive": {
       update.status = "archived";
-      break;
-    }
-    case "finish": {
-      update.status = "archived";
-      if (!project.finishDate) {
-        update.finish_date = now;
-      }
       break;
     }
   }
