@@ -98,7 +98,14 @@ function ProjectColumn({
               key={project.id}
               className="rounded border border-border px-4 py-3"
             >
-              <div className="font-medium">{project.name}</div>
+              <div className="font-medium">
+                <Link
+                  href={`/protected/projects/${project.id}`}
+                  className="underline"
+                >
+                  {project.name}
+                </Link>
+              </div>
               <div className="text-sm text-muted-foreground">
                 Next action: {project.next_action || "-"}
               </div>
