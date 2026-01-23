@@ -38,3 +38,13 @@ Goal: Import repos as drafts without auto-creating projects.
 - [x] PCE-102 List & select repos (Vercel-style)
 - [x] PCE-103 Store imported drafts
 - [x] PCE-104 Convert draft → Project (manual)
+
+## Epic 3 - UX & Continuity (V1)
+
+Goal: Improve visibility when managing many projects.
+
+### Tickets
+
+- [ ] PCE-201 Dashboard board view (columns)
+- [ ] PCE-202 Post-create redirect & feedback
+- [ ] PCE-203 Restart archived project as new cycle
