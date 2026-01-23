@@ -293,3 +293,38 @@ export async function restartArchivedProject(
 
   return toProject(data);
 }
+
+export async function deleteArchivedProject(id: string): Promise<void> {
+  if (!id) {
+    throw new Error("Project id is required.");
+  }
+
+  const project = await fetchProjectById(id);
+
+  if (!project) {
+    throw new Error("Project not found.");
+  }
+
+  if (project.status !== "archived") {
+    throw new Error("Only archived projects can be deleted.");
+  }
+
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("projects")
+    .delete()
+    .eq("id", id)
+    .eq("status", "archived")
+    .select("id")
+    .maybeSingle();
+
+  if (error) {
+    throw new Error(`Failed to delete project: ${error.message}`);
+  }
+
+  if (!data) {
+    throw new Error(
+      "Project status changed before deletion; please refresh and try again.",
+    );
+  }
+}

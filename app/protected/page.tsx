@@ -1,4 +1,5 @@
 import type { ProjectStatus } from "@/lib/domain/project";
+import { DeleteArchivedProjectButton } from "@/components/delete-archived-project-button";
 import { FeedbackToast } from "@/components/feedback-toast";
 import { LifecycleActionButton } from "@/components/lifecycle-action-button";
 import { RestartCycleButton } from "@/components/restart-cycle-button";
@@ -7,6 +8,7 @@ import { createClient } from "@/lib/supabase/server";
 import {
   applyLifecycleAction,
   type LifecycleAction,
+  deleteArchivedProject,
   restartArchivedProject,
 } from "@/lib/usecases/projects";
 import { getGitHubConnectionState } from "@/lib/usecases/github";
@@ -62,6 +64,12 @@ async function handleRestartCycle(id: string, nextAction: string) {
   "use server";
 
   await restartArchivedProject(id, nextAction);
+}
+
+async function handleDeleteProject(id: string) {
+  "use server";
+
+  await deleteArchivedProject(id);
 }
 
 async function fetchProjects(): Promise<ProjectRow[]> {
@@ -133,10 +141,14 @@ function ProjectColumn({
                 </div>
               )}
               {project.status === "archived" && (
-                <div className="mt-3">
+                <div className="mt-3 flex flex-wrap gap-2">
                   <RestartCycleButton
                     id={project.id}
                     onRestart={handleRestartCycle}
+                  />
+                  <DeleteArchivedProjectButton
+                    id={project.id}
+                    onDelete={handleDeleteProject}
                   />
                 </div>
               )}
