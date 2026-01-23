@@ -42,13 +42,13 @@ async function handleConvertDraft(id: string, formData: FormData) {
     throw new Error("Name and next action are required.");
   }
 
-  const projectId = await convertRepoDraft(id, {
+  await convertRepoDraft(id, {
     name: nameValue.trim(),
     nextAction: nextActionValue.trim(),
     finishDefinition: normalizeOptional(formData.get("finishDefinition")),
   });
 
-  redirect(`/protected/projects/${projectId}`);
+  redirect("/protected?toast=draft-converted");
 }
 
 async function DraftDetail({ id }: { id: string }) {

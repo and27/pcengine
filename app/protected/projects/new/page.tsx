@@ -26,7 +26,7 @@ async function handleCreateProject(formData: FormData) {
     throw new Error("Name and next action are required.");
   }
 
-  const project = await createProject({
+  await createProject({
     name: nameValue.trim(),
     narrativeLink: normalizeOptional(formData.get("narrativeLink")),
     whyNow: normalizeOptional(formData.get("whyNow")),
@@ -35,7 +35,7 @@ async function handleCreateProject(formData: FormData) {
     status: "frozen",
   });
 
-  redirect(`/protected/projects/${project.id}`);
+  redirect("/protected?toast=project-created");
 }
 
 async function NewProjectForm() {
