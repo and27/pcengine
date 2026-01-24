@@ -72,6 +72,7 @@ function toProject(row: ProjectRow): Project {
     nextAction: row.next_action,
     startDate: row.start_date,
     finishDate: row.finish_date,
+    lastReviewedAt: row.last_reviewed_at,
   };
 }
 
@@ -91,6 +92,7 @@ function buildProjectInsert(input: NewProjectInput): ProjectInsert {
     next_action: input.nextAction.trim(),
     start_date: status === "active" ? new Date().toISOString() : null,
     finish_date: null,
+    last_reviewed_at: null,
   };
 }
 
@@ -122,6 +124,10 @@ function buildProjectUpdate(input: UpdateProjectInput): ProjectUpdate {
   if (input.nextAction !== undefined) {
     assertNextAction(input.nextAction);
     update.next_action = input.nextAction.trim();
+  }
+
+  if (input.lastReviewedAt !== undefined) {
+    update.last_reviewed_at = input.lastReviewedAt ?? null;
   }
 
   return update;
