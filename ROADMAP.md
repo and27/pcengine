@@ -56,7 +56,7 @@ Goal: Add lightweight insights and a review flow, plus mobile responsiveness pol
 
 ### Tickets
 
-- [ ] PCE-301 Insights overview (status counts + active cap)
-- [ ] PCE-302 Review mode (weekly checklist + stale next actions)
-- [ ] PCE-303 Review history (last reviewed timestamp per project)
-- [ ] PCE-304 Mobile responsiveness pass (dashboard, drafts, forms)
+- [x] PCE-301 Insights overview (status counts + active cap)
+- [x] PCE-302 Review mode (weekly checklist + stale next actions)
+- [x] PCE-303 Review history (last reviewed timestamp per project)
+- [x] PCE-304 Mobile responsiveness pass (dashboard, drafts, forms)
