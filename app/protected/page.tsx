@@ -2,6 +2,11 @@ import type { ProjectStatus } from "@/lib/domain/project";
 import { DeleteArchivedProjectButton } from "@/components/delete-archived-project-button";
 import { FeedbackToast } from "@/components/feedback-toast";
 import { LifecycleActionButton } from "@/components/lifecycle-action-button";
+import {
+  OverrideLaunchButton,
+  type ActiveProjectOption,
+  type OverrideDecisionInput,
+} from "@/components/override-launch-button";
 import { RestartCycleButton } from "@/components/restart-cycle-button";
 import {
   SnapshotActionButton,
@@ -14,6 +19,7 @@ import {
   applyLifecycleAction,
   type LifecycleAction,
   deleteArchivedProject,
+  overrideActiveCap,
   restartArchivedProject,
 } from "@/lib/usecases/projects";
 import { getGitHubConnectionState } from "@/lib/usecases/github";
@@ -32,6 +38,7 @@ type ProjectRow = {
   next_action: string;
   start_date: string | null;
   finish_date: string | null;
+  last_reviewed_at: string | null;
 };
 
 type DraftRow = {
@@ -67,6 +74,12 @@ async function handleLifecycleAction(id: string, action: LifecycleAction) {
   await applyLifecycleAction(id, action);
 }
 
+async function handleLaunchAction(id: string) {
+  "use server";
+
+  await applyLifecycleAction(id, "launch");
+}
+
 async function handleSnapshotAction(
   id: string,
   action: SnapshotAction,
@@ -75,6 +88,17 @@ async function handleSnapshotAction(
   "use server";
 
   await applyLifecycleAction(id, action, snapshot);
+}
+
+async function handleOverrideRitual(
+  launchProjectId: string,
+  freezeProjectId: string,
+  snapshot: SnapshotInput,
+  decision: OverrideDecisionInput,
+) {
+  "use server";
+
+  await overrideActiveCap(launchProjectId, freezeProjectId, snapshot, decision);
 }
 
 async function handleRestartCycle(id: string, nextAction: string) {
@@ -139,10 +163,24 @@ function groupProjects(projects: ProjectRow[]) {
 function ProjectColumn({
   status,
   projects,
+  activeProjects,
 }: {
   status: ProjectStatus;
   projects: ProjectRow[];
+  activeProjects: ActiveProjectOption[];
 }) {
+  const formatLastReviewed = (value: string | null) => {
+    if (!value) {
+      return "Not reviewed yet.";
+    }
+
+    const diffMs = Date.now() - new Date(value).getTime();
+    const diffDays = Math.max(0, Math.floor(diffMs / (1000 * 60 * 60 * 24)));
+    return diffDays === 0
+      ? "Reviewed today."
+      : `Last reviewed ${diffDays} day${diffDays === 1 ? "" : "s"} ago.`;
+  };
+
   return (
     <section className="flex flex-col gap-3">
       <h2 className="text-xl font-semibold">{STATUS_LABELS[status]}</h2>
@@ -168,11 +206,22 @@ function ProjectColumn({
               <div className="text-sm text-muted-foreground">
                 Next action: {project.next_action || "-"}
               </div>
+              <div className="text-xs text-muted-foreground">
+                {formatLastReviewed(project.last_reviewed_at)}
+              </div>
               {ACTIONS_BY_STATUS[project.status].length > 0 && (
                 <div className="mt-3 flex flex-wrap gap-2">
                   {ACTIONS_BY_STATUS[project.status].map((action) => (
                     <div key={action}>
-                      {SNAPSHOT_ACTIONS.has(action) ? (
+                      {action === "launch" ? (
+                        <OverrideLaunchButton
+                          projectId={project.id}
+                          label={ACTION_LABELS[action]}
+                          activeProjects={activeProjects}
+                          onLaunch={handleLaunchAction}
+                          onOverride={handleOverrideRitual}
+                        />
+                      ) : SNAPSHOT_ACTIONS.has(action) ? (
                         <SnapshotActionButton
                           id={project.id}
                           action={action as SnapshotAction}
@@ -258,6 +307,11 @@ async function ProjectBoard() {
   const activeCount = grouped.active.length;
   const frozenCount = grouped.frozen.length;
   const archivedCount = grouped.archived.length;
+  const activeProjectOptions = grouped.active.map((project) => ({
+    id: project.id,
+    name: project.name,
+    nextAction: project.next_action,
+  }));
   const drafts = await fetchRepoDrafts();
   const githubConnection = await getGitHubConnectionState();
   const pendingDrafts = drafts.filter((draft) => !draft.converted_project_id);
@@ -285,9 +339,21 @@ async function ProjectBoard() {
       </div>
       <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-4">
         <DraftColumn drafts={pendingDrafts} />
-        <ProjectColumn status="active" projects={grouped.active} />
-        <ProjectColumn status="frozen" projects={grouped.frozen} />
-        <ProjectColumn status="archived" projects={grouped.archived} />
+        <ProjectColumn
+          status="active"
+          projects={grouped.active}
+          activeProjects={activeProjectOptions}
+        />
+        <ProjectColumn
+          status="frozen"
+          projects={grouped.frozen}
+          activeProjects={activeProjectOptions}
+        />
+        <ProjectColumn
+          status="archived"
+          projects={grouped.archived}
+          activeProjects={activeProjectOptions}
+        />
       </div>
     </div>
   );
@@ -303,6 +369,9 @@ export default function ProtectedPage() {
         <div className="flex flex-wrap items-center justify-between gap-3">
           <h1 className="text-2xl font-bold">Dashboard</h1>
           <div className="flex flex-wrap gap-2">
+            <Button asChild variant="outline">
+              <Link href="/protected?review=1">Start review</Link>
+            </Button>
             <Button asChild variant="outline">
               <Link href="/protected/github">GitHub import</Link>
             </Button>
