@@ -1,4 +1,5 @@
 export const PROJECT_STATUSES = ["active", "frozen", "archived"] as const;
+export const REVIEW_STALE_DAYS = 7;
 
 export type ProjectStatus = (typeof PROJECT_STATUSES)[number];
 
@@ -12,6 +13,7 @@ export type Project = {
   nextAction: string;
   startDate: string | null;
   finishDate: string | null;
+  lastReviewedAt: string | null;
 };
 
 export type NewProjectInput = {
@@ -30,6 +32,7 @@ export type UpdateProjectInput = {
   finishDefinition?: string | null;
   status?: ProjectStatus;
   nextAction?: string;
+  lastReviewedAt?: string | null;
 };
 
 export const MAX_NEXT_ACTION_LENGTH = 140;
