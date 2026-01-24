@@ -38,6 +38,7 @@ type ProjectRow = {
   next_action: string;
   start_date: string | null;
   finish_date: string | null;
+  last_reviewed_at: string | null;
 };
 
 type DraftRow = {
@@ -143,6 +144,18 @@ function ProjectColumn({
   projects: ProjectRow[];
   activeProjects: ActiveProjectOption[];
 }) {
+  const formatLastReviewed = (value: string | null) => {
+    if (!value) {
+      return "Not reviewed yet.";
+    }
+
+    const diffMs = Date.now() - new Date(value).getTime();
+    const diffDays = Math.max(0, Math.floor(diffMs / (1000 * 60 * 60 * 24)));
+    return diffDays === 0
+      ? "Reviewed today."
+      : `Last reviewed ${diffDays} day${diffDays === 1 ? "" : "s"} ago.`;
+  };
+
   return (
     <section className="flex flex-col gap-3">
       <h2 className="text-xl font-semibold">{STATUS_LABELS[status]}</h2>
@@ -167,6 +180,9 @@ function ProjectColumn({
               </div>
               <div className="text-sm text-muted-foreground">
                 Next action: {project.next_action || "-"}
+              </div>
+              <div className="text-xs text-muted-foreground">
+                {formatLastReviewed(project.last_reviewed_at)}
               </div>
               {ACTIONS_BY_STATUS[project.status].length > 0 && (
                 <div className="mt-3 flex flex-wrap gap-2">
