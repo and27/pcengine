@@ -103,6 +103,31 @@ async function fetchProjects(): Promise<ProjectRow[]> {
   return data ?? [];
 }
 
+function SystemStateHeader({
+  activeCount,
+  frozenCount,
+  archivedCount,
+}: {
+  activeCount: number;
+  frozenCount: number;
+  archivedCount: number;
+}) {
+  const activeCap = 3;
+
+  return (
+    <div className="rounded border border-border px-4 py-3 text-sm">
+      <div className="flex flex-wrap items-center gap-3">
+        <span>Active: {activeCount}</span>
+        <span>Frozen: {frozenCount}</span>
+        <span>Archived: {archivedCount}</span>
+        <span className="text-muted-foreground">
+          Active cap: {activeCount} / {activeCap}
+        </span>
+      </div>
+    </div>
+  );
+}
+
 function groupProjects(projects: ProjectRow[]) {
   return {
     active: projects.filter((project) => project.status === "active"),
@@ -230,12 +255,20 @@ async function ProjectBoard() {
 
   const projects = await fetchProjects();
   const grouped = groupProjects(projects);
+  const activeCount = grouped.active.length;
+  const frozenCount = grouped.frozen.length;
+  const archivedCount = grouped.archived.length;
   const drafts = await fetchRepoDrafts();
   const githubConnection = await getGitHubConnectionState();
   const pendingDrafts = drafts.filter((draft) => !draft.converted_project_id);
 
   return (
     <div className="flex flex-col gap-8">
+      <SystemStateHeader
+        activeCount={activeCount}
+        frozenCount={frozenCount}
+        archivedCount={archivedCount}
+      />
       <div className="rounded border border-border px-4 py-3">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="text-sm">
