@@ -337,6 +337,9 @@ export default function ProtectedPage() {
           <h1 className="text-2xl font-bold">Dashboard</h1>
           <div className="flex flex-wrap gap-2">
             <Button asChild variant="outline">
+              <Link href="/protected?review=1">Start review</Link>
+            </Button>
+            <Button asChild variant="outline">
               <Link href="/protected/github">GitHub import</Link>
             </Button>
             <Button asChild>
