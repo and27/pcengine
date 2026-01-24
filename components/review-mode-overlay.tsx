@@ -256,15 +256,13 @@ export function ReviewModeOverlay({
 
   const hasStale = useMemo(() => {
     const now = Date.now();
+    const staleMs = staleDays * 24 * 60 * 60 * 1000;
     return projects.some((project) => {
       if (!project.lastReviewedAt) {
         return true;
       }
-      const diffDays = Math.floor(
-        (now - new Date(project.lastReviewedAt).getTime()) /
-          (1000 * 60 * 60 * 24),
-      );
-      return diffDays > staleDays;
+      const diffMs = now - new Date(project.lastReviewedAt).getTime();
+      return diffMs > staleMs;
     });
   }, [projects, staleDays]);
 
