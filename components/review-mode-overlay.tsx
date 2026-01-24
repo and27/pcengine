@@ -258,13 +258,16 @@ export function ReviewModeOverlay({
     const now = Date.now();
     const staleMs = staleDays * 24 * 60 * 60 * 1000;
     return projects.some((project) => {
+      if (completedIds.has(project.id)) {
+        return false;
+      }
       if (!project.lastReviewedAt) {
         return true;
       }
       const diffMs = now - new Date(project.lastReviewedAt).getTime();
       return diffMs > staleMs;
     });
-  }, [projects, staleDays]);
+  }, [projects, staleDays, completedIds]);
 
   useEffect(() => {
     if (projects.length === 0) {
