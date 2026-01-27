@@ -118,7 +118,7 @@ export const supabaseRepoDraftsAdapter: RepoDraftsPort = {
     const { data: projectResult, error: convertError } = await supabase
       .rpc("convert_repo_draft_to_project_service", {
         draft_id: id,
-        user_id: context.userId,
+        p_user_id: context.userId,
         project_name: input.name.trim(),
         next_action: input.nextAction.trim(),
         finish_definition: input.finishDefinition ?? null,
