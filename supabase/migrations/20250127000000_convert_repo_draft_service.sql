@@ -67,3 +67,19 @@ begin
   return query select new_project_id as project_id;
 end;
 $$;
+
+revoke execute on function public.convert_repo_draft_to_project_service(
+  uuid,
+  uuid,
+  text,
+  text,
+  text
+) from public;
+
+grant execute on function public.convert_repo_draft_to_project_service(
+  uuid,
+  uuid,
+  text,
+  text,
+  text
+) to service_role;
