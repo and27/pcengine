@@ -15,6 +15,7 @@ Supabase adapters behind those ports. Use-cases will depend only on the ports,
 not on Supabase clients or types.
 Auth/session resolution stays outside persistence (use-cases receive user
 context/userId; adapters do not call Supabase auth).
+Ports live in `lib/usecases/ports/`.
 
 ## Alternatives considered
 
