@@ -1,3 +1,11 @@
+drop function if exists public.convert_repo_draft_to_project_service(
+  uuid,
+  uuid,
+  text,
+  text,
+  text
+);
+
 create or replace function public.convert_repo_draft_to_project_service(
   draft_id uuid,
   p_user_id uuid,
