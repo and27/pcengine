@@ -1,4 +1,4 @@
-import type { ProjectStatus } from "@/lib/domain/project";
+import type { Project, ProjectStatus } from "@/lib/domain/project";
 import { DeleteArchivedProjectButton } from "@/components/delete-archived-project-button";
 import { FeedbackToast } from "@/components/feedback-toast";
 import { LifecycleActionButton } from "@/components/lifecycle-action-button";
@@ -14,9 +14,16 @@ import {
   type SnapshotInput,
 } from "@/components/snapshot-action-button";
 import { Button } from "@/components/ui/button";
-import { createClient } from "@/lib/supabase/server";
+import {
+  getUserContext,
+  requireUserContext,
+  supabaseGitHubConnectionsAdapter,
+  supabaseProjectsAdapter,
+  supabaseRepoDraftsAdapter,
+} from "@/lib/clients/supabase";
 import {
   applyLifecycleAction,
+  fetchProjects,
   type LifecycleAction,
   deleteArchivedProject,
   overrideActiveCap,
@@ -24,28 +31,10 @@ import {
 } from "@/lib/usecases/projects";
 import { getGitHubConnectionState } from "@/lib/usecases/github";
 import { fetchRepoDrafts } from "@/lib/usecases/github-drafts";
+import type { RepoDraft } from "@/lib/usecases/ports";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { Suspense } from "react";
-
-type ProjectRow = {
-  id: string;
-  name: string;
-  narrative_link: string | null;
-  why_now: string | null;
-  finish_definition: string | null;
-  status: ProjectStatus;
-  next_action: string;
-  start_date: string | null;
-  finish_date: string | null;
-  last_reviewed_at: string | null;
-};
-
-type DraftRow = {
-  id: string;
-  full_name: string;
-  converted_project_id: string | null;
-};
 
 const STATUS_LABELS: Record<ProjectStatus, string> = {
   active: "Active",
@@ -71,13 +60,15 @@ const ACTIONS_BY_STATUS: Record<ProjectStatus, LifecycleAction[]> = {
 async function handleLifecycleAction(id: string, action: LifecycleAction) {
   "use server";
 
-  await applyLifecycleAction(id, action);
+  await requireUserContext();
+  await applyLifecycleAction(supabaseProjectsAdapter, id, action);
 }
 
 async function handleLaunchAction(id: string) {
   "use server";
 
-  await applyLifecycleAction(id, "launch");
+  await requireUserContext();
+  await applyLifecycleAction(supabaseProjectsAdapter, id, "launch");
 }
 
 async function handleSnapshotAction(
@@ -87,7 +78,8 @@ async function handleSnapshotAction(
 ) {
   "use server";
 
-  await applyLifecycleAction(id, action, snapshot);
+  await requireUserContext();
+  await applyLifecycleAction(supabaseProjectsAdapter, id, action, snapshot);
 }
 
 async function handleOverrideRitual(
@@ -98,33 +90,28 @@ async function handleOverrideRitual(
 ) {
   "use server";
 
-  await overrideActiveCap(launchProjectId, freezeProjectId, snapshot, decision);
+  await requireUserContext();
+  await overrideActiveCap(
+    supabaseProjectsAdapter,
+    launchProjectId,
+    freezeProjectId,
+    snapshot,
+    decision,
+  );
 }
 
 async function handleRestartCycle(id: string, nextAction: string) {
   "use server";
 
-  await restartArchivedProject(id, nextAction);
+  await requireUserContext();
+  await restartArchivedProject(supabaseProjectsAdapter, id, nextAction);
 }
 
 async function handleDeleteProject(id: string) {
   "use server";
 
-  await deleteArchivedProject(id);
-}
-
-async function fetchProjects(): Promise<ProjectRow[]> {
-  const supabase = await createClient();
-  const { data, error } = await supabase
-    .from("projects")
-    .select("*")
-    .order("start_date", { ascending: false, nullsFirst: false });
-
-  if (error) {
-    throw new Error(`Failed to load projects: ${error.message}`);
-  }
-
-  return data ?? [];
+  await requireUserContext();
+  await deleteArchivedProject(supabaseProjectsAdapter, id);
 }
 
 function SystemStateHeader({
@@ -152,7 +139,7 @@ function SystemStateHeader({
   );
 }
 
-function groupProjects(projects: ProjectRow[]) {
+function groupProjects(projects: Project[]) {
   return {
     active: projects.filter((project) => project.status === "active"),
     frozen: projects.filter((project) => project.status === "frozen"),
@@ -166,7 +153,7 @@ function ProjectColumn({
   activeProjects,
 }: {
   status: ProjectStatus;
-  projects: ProjectRow[];
+  projects: Project[];
   activeProjects: ActiveProjectOption[];
 }) {
   const formatLastReviewed = (value: string | null) => {
@@ -204,10 +191,10 @@ function ProjectColumn({
                 </Link>
               </div>
               <div className="text-sm text-muted-foreground">
-                Next action: {project.next_action || "-"}
+                Next action: {project.nextAction || "-"}
               </div>
               <div className="text-xs text-muted-foreground">
-                {formatLastReviewed(project.last_reviewed_at)}
+                {formatLastReviewed(project.lastReviewedAt)}
               </div>
               {ACTIONS_BY_STATUS[project.status].length > 0 && (
                 <div className="mt-3 flex flex-wrap gap-2">
@@ -260,7 +247,7 @@ function ProjectColumn({
   );
 }
 
-function DraftColumn({ drafts }: { drafts: DraftRow[] }) {
+function DraftColumn({ drafts }: { drafts: RepoDraft[] }) {
   return (
     <section className="flex flex-col gap-3">
       <h2 className="text-xl font-semibold">Drafts</h2>
@@ -280,7 +267,7 @@ function DraftColumn({ drafts }: { drafts: DraftRow[] }) {
                   href={`/protected/github/drafts/${draft.id}`}
                   className="underline"
                 >
-                  {draft.full_name}
+                  {draft.fullName}
                 </Link>
               </div>
               <div className="text-sm text-muted-foreground">
@@ -295,14 +282,13 @@ function DraftColumn({ drafts }: { drafts: DraftRow[] }) {
 }
 
 async function ProjectBoard() {
-  const supabase = await createClient();
-  const { data } = await supabase.auth.getClaims();
+  const userContext = await getUserContext();
 
-  if (!data?.claims) {
+  if (!userContext) {
     redirect("/auth/login");
   }
 
-  const projects = await fetchProjects();
+  const projects = await fetchProjects(supabaseProjectsAdapter);
   const grouped = groupProjects(projects);
   const activeCount = grouped.active.length;
   const frozenCount = grouped.frozen.length;
@@ -310,11 +296,17 @@ async function ProjectBoard() {
   const activeProjectOptions = grouped.active.map((project) => ({
     id: project.id,
     name: project.name,
-    nextAction: project.next_action,
+    nextAction: project.nextAction,
   }));
-  const drafts = await fetchRepoDrafts();
-  const githubConnection = await getGitHubConnectionState();
-  const pendingDrafts = drafts.filter((draft) => !draft.converted_project_id);
+  const drafts = await fetchRepoDrafts(
+    supabaseRepoDraftsAdapter,
+    userContext,
+  );
+  const githubConnection = await getGitHubConnectionState(
+    supabaseGitHubConnectionsAdapter,
+    userContext,
+  );
+  const pendingDrafts = drafts.filter((draft) => !draft.convertedProjectId);
 
   return (
     <div className="flex flex-col gap-8">

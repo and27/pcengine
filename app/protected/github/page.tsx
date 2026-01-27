@@ -4,7 +4,12 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 
 import { Button } from "@/components/ui/button";
-import { createClient } from "@/lib/supabase/server";
+import {
+  getUserContext,
+  requireUserContext,
+  supabaseGitHubConnectionsAdapter,
+  supabaseRepoDraftsAdapter,
+} from "@/lib/clients/supabase";
 import { getGitHubAccessToken } from "@/lib/usecases/github";
 import { upsertRepoDrafts } from "@/lib/usecases/github-drafts";
 
@@ -23,13 +28,13 @@ type GitHubRepo = {
 };
 
 type ImportPayload = {
-  github_repo_id: number;
-  full_name: string;
-  html_url: string;
+  githubRepoId: number;
+  fullName: string;
+  htmlUrl: string;
   description: string | null;
   visibility: "public" | "private";
-  default_branch: string;
-  pushed_at: string | null;
+  defaultBranch: string;
+  pushedAt: string | null;
 };
 
 function formatDate(value: string | null) {
@@ -70,6 +75,7 @@ async function fetchGitHubRepos(token: string): Promise<GitHubRepo[]> {
 async function importSelectedRepos(formData: FormData) {
   "use server";
 
+  const userContext = await requireUserContext();
   const selected = formData.getAll("selectedRepos");
 
   if (selected.length === 0) {
@@ -80,20 +86,26 @@ async function importSelectedRepos(formData: FormData) {
     .filter((value): value is string => typeof value === "string")
     .map(decodePayload);
 
-  const importedCount = await upsertRepoDrafts(payloads);
+  const importedCount = await upsertRepoDrafts(
+    supabaseRepoDraftsAdapter,
+    userContext,
+    payloads,
+  );
 
   redirect(`/protected/github/drafts?imported=${importedCount}`);
 }
 
 async function RepoList() {
-  const supabase = await createClient();
-  const { data } = await supabase.auth.getClaims();
+  const userContext = await getUserContext();
 
-  if (!data?.claims) {
+  if (!userContext) {
     redirect("/auth/login");
   }
 
-  const token = await getGitHubAccessToken();
+  const token = await getGitHubAccessToken(
+    supabaseGitHubConnectionsAdapter,
+    userContext,
+  );
 
   if (!token) {
     redirect("/auth/github");
@@ -118,13 +130,13 @@ async function RepoList() {
       <div className="flex flex-col gap-2">
         {repos.map((repo) => {
           const payload: ImportPayload = {
-            github_repo_id: repo.id,
-            full_name: repo.full_name,
-            html_url: repo.html_url,
+            githubRepoId: repo.id,
+            fullName: repo.full_name,
+            htmlUrl: repo.html_url,
             description: repo.description,
             visibility: repo.private ? "private" : "public",
-            default_branch: repo.default_branch,
-            pushed_at: repo.pushed_at,
+            defaultBranch: repo.default_branch,
+            pushedAt: repo.pushed_at,
           };
 
           return (
