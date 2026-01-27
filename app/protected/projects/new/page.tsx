@@ -4,7 +4,11 @@ import { redirect } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { getUserContext, supabaseProjectsAdapter } from "@/lib/clients/supabase";
+import {
+  getUserContext,
+  requireUserContext,
+  supabaseProjectsAdapter,
+} from "@/lib/clients/supabase";
 import { createProject } from "@/lib/usecases/projects";
 
 function normalizeOptional(value: FormDataEntryValue | null): string | null {
@@ -19,6 +23,7 @@ function normalizeOptional(value: FormDataEntryValue | null): string | null {
 async function handleCreateProject(formData: FormData) {
   "use server";
 
+  await requireUserContext();
   const nameValue = formData.get("name");
   const nextActionValue = formData.get("nextAction");
 

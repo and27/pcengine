@@ -1,6 +1,7 @@
 import { REVIEW_STALE_DAYS } from "@/lib/domain/project";
 import {
   getUserContext,
+  requireUserContext,
   supabaseProjectsAdapter,
 } from "@/lib/clients/supabase";
 import {
@@ -46,6 +47,7 @@ async function applyReviewDecision(
 ) {
   "use server";
 
+  await requireUserContext();
   const reviewedAt = new Date().toISOString();
 
   if (action === "next_action") {

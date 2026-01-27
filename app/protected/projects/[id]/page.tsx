@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
   getUserContext,
+  requireUserContext,
   supabaseProjectSnapshotsAdapter,
   supabaseProjectsAdapter,
 } from "@/lib/clients/supabase";
@@ -36,6 +37,7 @@ function formatDate(value: string | null) {
 async function saveProject(id: string, formData: FormData) {
   "use server";
 
+  await requireUserContext();
   const nameValue = formData.get("name");
   const nextActionValue = formData.get("nextAction");
 

@@ -16,6 +16,7 @@ import {
 import { Button } from "@/components/ui/button";
 import {
   getUserContext,
+  requireUserContext,
   supabaseGitHubConnectionsAdapter,
   supabaseProjectsAdapter,
   supabaseRepoDraftsAdapter,
@@ -59,12 +60,14 @@ const ACTIONS_BY_STATUS: Record<ProjectStatus, LifecycleAction[]> = {
 async function handleLifecycleAction(id: string, action: LifecycleAction) {
   "use server";
 
+  await requireUserContext();
   await applyLifecycleAction(supabaseProjectsAdapter, id, action);
 }
 
 async function handleLaunchAction(id: string) {
   "use server";
 
+  await requireUserContext();
   await applyLifecycleAction(supabaseProjectsAdapter, id, "launch");
 }
 
@@ -75,6 +78,7 @@ async function handleSnapshotAction(
 ) {
   "use server";
 
+  await requireUserContext();
   await applyLifecycleAction(supabaseProjectsAdapter, id, action, snapshot);
 }
 
@@ -86,6 +90,7 @@ async function handleOverrideRitual(
 ) {
   "use server";
 
+  await requireUserContext();
   await overrideActiveCap(
     supabaseProjectsAdapter,
     launchProjectId,
@@ -98,12 +103,14 @@ async function handleOverrideRitual(
 async function handleRestartCycle(id: string, nextAction: string) {
   "use server";
 
+  await requireUserContext();
   await restartArchivedProject(supabaseProjectsAdapter, id, nextAction);
 }
 
 async function handleDeleteProject(id: string) {
   "use server";
 
+  await requireUserContext();
   await deleteArchivedProject(supabaseProjectsAdapter, id);
 }
 
