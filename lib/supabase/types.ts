@@ -261,7 +261,7 @@ export type Database = {
       convert_repo_draft_to_project_service: {
         Args: {
           draft_id: string;
-          user_id: string;
+          p_user_id: string;
           project_name: string;
           next_action: string;
           finish_definition: string | null;
