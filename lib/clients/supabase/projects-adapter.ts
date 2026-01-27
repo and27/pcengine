@@ -143,6 +143,20 @@ export const supabaseProjectsAdapter: ProjectsPort = {
     return toProject(data);
   },
 
+  async fetchProjects() {
+    const supabase = createServiceClient();
+    const { data, error } = await supabase
+      .from("projects")
+      .select("*")
+      .order("start_date", { ascending: false, nullsFirst: false });
+
+    if (error) {
+      throw new Error(`Failed to load projects: ${error.message}`);
+    }
+
+    return (data ?? []).map(toProject);
+  },
+
   async updateProject(id, updates) {
     const supabase = createServiceClient();
     const update = buildProjectUpdate(updates);
@@ -238,6 +252,9 @@ export const supabaseProjectsAdapter: ProjectsPort = {
       .single();
 
     if (error) {
+      if (error.message === "ACTIVE_CAP_REACHED") {
+        throw new Error("ACTIVE_CAP_REACHED");
+      }
       throw new Error(`Failed to launch project: ${error.message}`);
     }
 

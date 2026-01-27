@@ -30,6 +30,7 @@ export interface ProjectsPort {
     input: NewProjectInput,
     options: { enforceActiveCap: boolean; maxActive: number },
   ): Promise<Project>;
+  fetchProjects(): Promise<Project[]>;
   updateProject(id: string, updates: UpdateProjectInput): Promise<Project>;
   fetchProjectById(id: string): Promise<Project | null>;
   freezeProjectWithSnapshot(

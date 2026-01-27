@@ -4,7 +4,11 @@ import { redirect } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { createClient } from "@/lib/supabase/server";
+import {
+  getUserContext,
+  requireUserContext,
+  supabaseProjectsAdapter,
+} from "@/lib/clients/supabase";
 import { createProject } from "@/lib/usecases/projects";
 
 function normalizeOptional(value: FormDataEntryValue | null): string | null {
@@ -19,6 +23,7 @@ function normalizeOptional(value: FormDataEntryValue | null): string | null {
 async function handleCreateProject(formData: FormData) {
   "use server";
 
+  await requireUserContext();
   const nameValue = formData.get("name");
   const nextActionValue = formData.get("nextAction");
 
@@ -26,7 +31,7 @@ async function handleCreateProject(formData: FormData) {
     throw new Error("Name and next action are required.");
   }
 
-  await createProject({
+  await createProject(supabaseProjectsAdapter, {
     name: nameValue.trim(),
     narrativeLink: normalizeOptional(formData.get("narrativeLink")),
     whyNow: normalizeOptional(formData.get("whyNow")),
@@ -39,10 +44,9 @@ async function handleCreateProject(formData: FormData) {
 }
 
 async function NewProjectForm() {
-  const supabase = await createClient();
-  const { data } = await supabase.auth.getClaims();
+  const userContext = await getUserContext();
 
-  if (!data?.claims) {
+  if (!userContext) {
     redirect("/auth/login");
   }
 

@@ -1,3 +1,5 @@
+import "server-only";
+
 import {
   assertNextAction,
   assertProjectName,
@@ -6,13 +8,14 @@ import {
   type Project,
   type ProjectStatus,
   type UpdateProjectInput,
-} from "../domain/project";
-import { createClient } from "../supabase/server";
-import type { Database } from "../supabase/types";
+} from "@/lib/domain/project";
+import type {
+  OverrideDecisionInput,
+  ProjectSnapshotInput,
+  ProjectsPort,
+} from "@/lib/usecases/ports";
 
-type ProjectRow = Database["public"]["Tables"]["projects"]["Row"];
-type ProjectInsert = Database["public"]["Tables"]["projects"]["Insert"];
-type ProjectUpdate = Database["public"]["Tables"]["projects"]["Update"];
+export type { OverrideDecisionInput, ProjectSnapshotInput };
 
 const DEFAULT_STATUS: ProjectStatus = "active";
 export type LifecycleAction = "launch" | "freeze" | "archive" | "finish";
@@ -24,18 +27,6 @@ const ACTION_ALLOWED_STATUSES: Record<LifecycleAction, ProjectStatus[]> = {
   finish: ["active", "frozen"],
 };
 const ACTIVE_PROJECT_LIMIT = 3;
-
-export type ProjectSnapshotInput = {
-  summary: string;
-  label?: string | null;
-  leftOut?: string | null;
-  futureNote?: string | null;
-};
-
-export type OverrideDecisionInput = {
-  reason: string;
-  tradeOff: string;
-};
 
 type SnapshotPayload = {
   summary: string;
@@ -89,22 +80,7 @@ function buildDecisionPayload(input: OverrideDecisionInput): DecisionPayload {
   };
 }
 
-function toProject(row: ProjectRow): Project {
-  return {
-    id: row.id,
-    name: row.name,
-    narrativeLink: row.narrative_link,
-    whyNow: row.why_now,
-    finishDefinition: row.finish_definition,
-    status: row.status,
-    nextAction: row.next_action,
-    startDate: row.start_date,
-    finishDate: row.finish_date,
-    lastReviewedAt: row.last_reviewed_at,
-  };
-}
-
-function buildProjectInsert(input: NewProjectInput): ProjectInsert {
+function normalizeProjectInput(input: NewProjectInput): NewProjectInput {
   assertProjectName(input.name);
   assertNextAction(input.nextAction);
 
@@ -113,19 +89,16 @@ function buildProjectInsert(input: NewProjectInput): ProjectInsert {
 
   return {
     name: input.name.trim(),
-    narrative_link: input.narrativeLink ?? null,
-    why_now: input.whyNow ?? null,
-    finish_definition: input.finishDefinition ?? null,
+    narrativeLink: input.narrativeLink ?? null,
+    whyNow: input.whyNow ?? null,
+    finishDefinition: input.finishDefinition ?? null,
     status,
-    next_action: input.nextAction.trim(),
-    start_date: status === "active" ? new Date().toISOString() : null,
-    finish_date: null,
-    last_reviewed_at: null,
+    nextAction: input.nextAction.trim(),
   };
 }
 
-function buildProjectUpdate(input: UpdateProjectInput): ProjectUpdate {
-  const update: ProjectUpdate = {};
+function normalizeProjectUpdates(input: UpdateProjectInput): UpdateProjectInput {
+  const update: UpdateProjectInput = {};
 
   if (input.name !== undefined) {
     assertProjectName(input.name);
@@ -133,15 +106,15 @@ function buildProjectUpdate(input: UpdateProjectInput): ProjectUpdate {
   }
 
   if (input.narrativeLink !== undefined) {
-    update.narrative_link = input.narrativeLink ?? null;
+    update.narrativeLink = input.narrativeLink ?? null;
   }
 
   if (input.whyNow !== undefined) {
-    update.why_now = input.whyNow ?? null;
+    update.whyNow = input.whyNow ?? null;
   }
 
   if (input.finishDefinition !== undefined) {
-    update.finish_definition = input.finishDefinition ?? null;
+    update.finishDefinition = input.finishDefinition ?? null;
   }
 
   if (input.status !== undefined) {
@@ -151,49 +124,35 @@ function buildProjectUpdate(input: UpdateProjectInput): ProjectUpdate {
 
   if (input.nextAction !== undefined) {
     assertNextAction(input.nextAction);
-    update.next_action = input.nextAction.trim();
+    update.nextAction = input.nextAction.trim();
   }
 
   if (input.lastReviewedAt !== undefined) {
-    update.last_reviewed_at = input.lastReviewedAt ?? null;
+    update.lastReviewedAt = input.lastReviewedAt ?? null;
   }
 
   return update;
 }
 
-export async function createProject(input: NewProjectInput): Promise<Project> {
-  const supabase = await createClient();
-  const insert = buildProjectInsert(input);
-  const isActive = insert.status === "active";
+export async function fetchProjects(port: ProjectsPort): Promise<Project[]> {
+  return port.fetchProjects();
+}
 
-  const { data, error } = isActive
-    ? await supabase
-        .rpc("create_project_with_active_cap", {
-          finish_definition: insert.finish_definition ?? null,
-          finish_date: insert.finish_date ?? null,
-          max_active: ACTIVE_PROJECT_LIMIT,
-          name: insert.name,
-          narrative_link: insert.narrative_link ?? null,
-          next_action: insert.next_action,
-          start_date: insert.start_date ?? null,
-          status: insert.status,
-          why_now: insert.why_now ?? null,
-        })
-        .single()
-    : await supabase.from("projects").insert(insert).select("*").single();
+export async function createProject(
+  port: ProjectsPort,
+  input: NewProjectInput,
+): Promise<Project> {
+  const normalized = normalizeProjectInput(input);
+  const enforceActiveCap = normalized.status === "active";
 
-  if (error) {
-    throw new Error(`Failed to create project: ${error.message}`);
-  }
-
-  if (!data) {
-    throw new Error("Project creation failed; no data returned.");
-  }
-
-  return toProject(data);
+  return port.createProject(normalized, {
+    enforceActiveCap,
+    maxActive: ACTIVE_PROJECT_LIMIT,
+  });
 }
 
 export async function updateProject(
+  port: ProjectsPort,
   id: string,
   updates: UpdateProjectInput,
 ): Promise<Project> {
@@ -201,52 +160,33 @@ export async function updateProject(
     throw new Error("Project id is required.");
   }
 
-  const supabase = await createClient();
-  const update = buildProjectUpdate(updates);
+  const update = normalizeProjectUpdates(updates);
 
   if (Object.keys(update).length === 0) {
     throw new Error("No project updates provided.");
   }
 
-  const { data, error } = await supabase
-    .from("projects")
-    .update(update)
-    .eq("id", id)
-    .select("*")
-    .single();
-
-  if (error) {
-    throw new Error(`Failed to update project: ${error.message}`);
-  }
-
-  return toProject(data);
+  return port.updateProject(id, update);
 }
 
-export async function fetchProjectById(id: string): Promise<Project | null> {
+export async function fetchProjectById(
+  port: ProjectsPort,
+  id: string,
+): Promise<Project | null> {
   if (!id) {
     throw new Error("Project id is required.");
   }
 
-  const supabase = await createClient();
-  const { data, error } = await supabase
-    .from("projects")
-    .select("*")
-    .eq("id", id)
-    .maybeSingle();
-
-  if (error) {
-    throw new Error(`Failed to fetch project: ${error.message}`);
-  }
-
-  return data ? toProject(data) : null;
+  return port.fetchProjectById(id);
 }
 
 export async function applyLifecycleAction(
+  port: ProjectsPort,
   id: string,
   action: LifecycleAction,
   snapshot?: ProjectSnapshotInput,
 ): Promise<Project> {
-  const project = await fetchProjectById(id);
+  const project = await fetchProjectById(port, id);
 
   if (!project) {
     throw new Error("Project not found.");
@@ -256,91 +196,46 @@ export async function applyLifecycleAction(
     throw new Error(`Cannot ${action} a ${project.status} project.`);
   }
 
-  if (action === "freeze" || action === "finish") {
+  if (action === "freeze") {
     if (!snapshot) {
       throw new Error("Snapshot is required for this action.");
     }
 
-    const payload = buildSnapshotPayload(snapshot);
-    const supabase = await createClient();
-    const rpcName =
-      action === "freeze"
-        ? "freeze_project_with_snapshot"
-        : "finish_project_with_snapshot";
-    const { data, error } = await supabase
-      .rpc(rpcName, {
-        project_id: id,
-        snapshot_summary: payload.summary,
-        snapshot_label: payload.label,
-        snapshot_left_out: payload.leftOut,
-        snapshot_future_note: payload.futureNote,
-      })
-      .single();
-
-    if (error) {
-      throw new Error(`Failed to ${action} project: ${error.message}`);
-    }
-
-    if (!data) {
-      throw new Error(
-        "Project status changed before update; please refresh and try again.",
-      );
-    }
-
-    return toProject(data);
+    return port.freezeProjectWithSnapshot(id, buildSnapshotPayload(snapshot));
   }
 
-  const update: ProjectUpdate = {};
-  const now = new Date().toISOString();
+  if (action === "finish") {
+    if (!snapshot) {
+      throw new Error("Snapshot is required for this action.");
+    }
 
-  switch (action) {
-    case "launch": {
-      update.status = "active";
-      if (!project.startDate) {
-        update.start_date = now;
+    return port.finishProjectWithSnapshot(id, buildSnapshotPayload(snapshot));
+  }
+
+  if (action === "launch") {
+    try {
+      return await port.launchProjectWithActiveCap(id, ACTIVE_PROJECT_LIMIT);
+    } catch (error) {
+      if (error instanceof Error && error.message === "ACTIVE_CAP_REACHED") {
+        throw error;
       }
-      break;
-    }
-    case "archive": {
-      update.status = "archived";
-      break;
+      throw error;
     }
   }
 
-  const supabase = await createClient();
-  const { data, error } =
-    action === "launch"
-      ? await supabase
-          .rpc("launch_project_with_active_cap", {
-            max_active: ACTIVE_PROJECT_LIMIT,
-            project_id: id,
-          })
-          .single()
-      : await supabase
-          .from("projects")
-          .update(update)
-          .eq("id", id)
-          .eq("status", project.status)
-          .select("*")
-          .maybeSingle();
+  const archived = await port.archiveProject(id, project.status);
 
-  if (error) {
-    if (action === "launch" && error.message === "ACTIVE_CAP_REACHED") {
-      throw new Error("ACTIVE_CAP_REACHED");
-    }
-    throw new Error(`Failed to ${action} project: ${error.message}`);
-  }
-
-  if (!data) {
+  if (!archived) {
     throw new Error(
       "Project status changed before update; please refresh and try again.",
     );
   }
 
-  return toProject(data);
+  return archived;
 }
 
 export async function overrideActiveCap(
+  port: ProjectsPort,
   launchProjectId: string,
   freezeProjectId: string,
   snapshot: ProjectSnapshotInput,
@@ -357,33 +252,17 @@ export async function overrideActiveCap(
   const snapshotPayload = buildSnapshotPayload(snapshot);
   const decisionPayload = buildDecisionPayload(decision);
 
-  const supabase = await createClient();
-  const { data, error } = await supabase
-    .rpc("override_active_cap_with_freeze", {
-      project_to_launch_id: launchProjectId,
-      project_to_freeze_id: freezeProjectId,
-      snapshot_summary: snapshotPayload.summary,
-      snapshot_label: snapshotPayload.label,
-      snapshot_left_out: snapshotPayload.leftOut,
-      snapshot_future_note: snapshotPayload.futureNote,
-      decision_reason: decisionPayload.reason,
-      decision_trade_off: decisionPayload.tradeOff,
-      max_active: ACTIVE_PROJECT_LIMIT,
-    })
-    .single();
-
-  if (error) {
-    throw new Error(`Failed to override active cap: ${error.message}`);
-  }
-
-  if (!data) {
-    throw new Error("Override failed; no data returned.");
-  }
-
-  return toProject(data);
+  return port.overrideActiveCapWithFreeze({
+    launchProjectId,
+    freezeProjectId,
+    snapshot: snapshotPayload,
+    decision: decisionPayload,
+    maxActive: ACTIVE_PROJECT_LIMIT,
+  });
 }
 
 export async function restartArchivedProject(
+  port: ProjectsPort,
   id: string,
   nextAction: string,
 ): Promise<Project> {
@@ -393,7 +272,7 @@ export async function restartArchivedProject(
 
   assertNextAction(nextAction);
 
-  const project = await fetchProjectById(id);
+  const project = await fetchProjectById(port, id);
 
   if (!project) {
     throw new Error("Project not found.");
@@ -405,41 +284,18 @@ export async function restartArchivedProject(
 
   assertProjectName(project.name);
 
-  const insert: ProjectInsert = {
-    name: project.name,
-    narrative_link: project.narrativeLink,
-    why_now: project.whyNow,
-    finish_definition: project.finishDefinition,
-    status: "frozen",
-    next_action: nextAction.trim(),
-    start_date: null,
-    finish_date: null,
-  };
-
-  const supabase = await createClient();
-  const { data, error } = await supabase
-    .from("projects")
-    .insert(insert)
-    .select("*")
-    .single();
-
-  if (error) {
-    throw new Error(`Failed to restart project: ${error.message}`);
-  }
-
-  if (!data) {
-    throw new Error("Project restart failed; no data returned.");
-  }
-
-  return toProject(data);
+  return port.restartArchivedProject(id, nextAction);
 }
 
-export async function deleteArchivedProject(id: string): Promise<void> {
+export async function deleteArchivedProject(
+  port: ProjectsPort,
+  id: string,
+): Promise<void> {
   if (!id) {
     throw new Error("Project id is required.");
   }
 
-  const project = await fetchProjectById(id);
+  const project = await fetchProjectById(port, id);
 
   if (!project) {
     throw new Error("Project not found.");
@@ -449,20 +305,9 @@ export async function deleteArchivedProject(id: string): Promise<void> {
     throw new Error("Only archived projects can be deleted.");
   }
 
-  const supabase = await createClient();
-  const { data, error } = await supabase
-    .from("projects")
-    .delete()
-    .eq("id", id)
-    .eq("status", "archived")
-    .select("id")
-    .maybeSingle();
+  const deleted = await port.deleteArchivedProject(id);
 
-  if (error) {
-    throw new Error(`Failed to delete project: ${error.message}`);
-  }
-
-  if (!data) {
+  if (!deleted) {
     throw new Error(
       "Project status changed before deletion; please refresh and try again.",
     );
