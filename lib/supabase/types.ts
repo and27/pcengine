@@ -258,6 +258,18 @@ export type Database = {
           project_id: string;
         }[];
       };
+      convert_repo_draft_to_project_service: {
+        Args: {
+          draft_id: string;
+          user_id: string;
+          project_name: string;
+          next_action: string;
+          finish_definition: string | null;
+        };
+        Returns: {
+          project_id: string;
+        }[];
+      };
     };
     Enums: {
       [_ in never]: never;

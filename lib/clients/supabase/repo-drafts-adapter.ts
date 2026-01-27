@@ -1,7 +1,7 @@
 import "server-only";
 
 import type { Database } from "@/lib/supabase/types";
-import { createClient, createServiceClient } from "@/lib/supabase/server";
+import { createServiceClient } from "@/lib/supabase/server";
 import type {
   RepoDraft,
   RepoDraftConversionInput,
@@ -114,10 +114,11 @@ export const supabaseRepoDraftsAdapter: RepoDraftsPort = {
       throw new Error("Missing user id.");
     }
 
-    const supabase = await createClient();
+    const supabase = createServiceClient();
     const { data: projectResult, error: convertError } = await supabase
-      .rpc("convert_repo_draft_to_project", {
+      .rpc("convert_repo_draft_to_project_service", {
         draft_id: id,
+        user_id: context.userId,
         project_name: input.name.trim(),
         next_action: input.nextAction.trim(),
         finish_definition: input.finishDefinition ?? null,
