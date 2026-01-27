@@ -60,3 +60,14 @@ Goal: Add lightweight insights and a review flow, plus mobile responsiveness pol
 - [x] PCE-302 Review mode (weekly checklist + stale next actions)
 - [x] PCE-303 Review history (last reviewed timestamp per project)
 - [x] PCE-304 Mobile responsiveness pass (dashboard, drafts, forms)
+
+## Epic 5 - Persistence Ports + Supabase Adapter (V1.2)
+
+Goal: Decouple use-cases from Supabase so persistence can be swapped later.
+
+### Tickets
+
+- [ ] PCE-401 Define persistence ports (interfaces) for current use-cases.
+- [ ] PCE-402 Implement Supabase adapters behind the ports.
+- [ ] PCE-403 Refactor use-cases to depend only on ports.
+- [ ] PCE-404 Align tests and smoke checks after the refactor.
