@@ -4,7 +4,11 @@ import { notFound, redirect } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { createClient } from "@/lib/supabase/server";
+import {
+  getUserContext,
+  supabaseProjectSnapshotsAdapter,
+  supabaseProjectsAdapter,
+} from "@/lib/clients/supabase";
 import { fetchProjectSnapshots } from "@/lib/usecases/project-snapshots";
 import { fetchProjectById, updateProject } from "@/lib/usecases/projects";
 
@@ -39,7 +43,7 @@ async function saveProject(id: string, formData: FormData) {
     throw new Error("Name and next action are required.");
   }
 
-  await updateProject(id, {
+  await updateProject(supabaseProjectsAdapter, id, {
     name: nameValue.trim(),
     narrativeLink: normalizeOptional(formData.get("narrativeLink")),
     whyNow: normalizeOptional(formData.get("whyNow")),
@@ -51,20 +55,22 @@ async function saveProject(id: string, formData: FormData) {
 }
 
 async function ProjectDetail({ id }: { id: string }) {
-  const supabase = await createClient();
-  const { data } = await supabase.auth.getClaims();
+  const userContext = await getUserContext();
 
-  if (!data?.claims) {
+  if (!userContext) {
     redirect("/auth/login");
   }
 
-  const project = await fetchProjectById(id);
+  const project = await fetchProjectById(supabaseProjectsAdapter, id);
 
   if (!project) {
     notFound();
   }
 
-  const snapshots = await fetchProjectSnapshots(id);
+  const snapshots = await fetchProjectSnapshots(
+    supabaseProjectSnapshotsAdapter,
+    id,
+  );
   const statusLabel =
     project.status === "archived"
       ? project.finishDate
@@ -144,7 +150,7 @@ async function ProjectDetail({ id }: { id: string }) {
                   {snapshot.kind === "freeze"
                     ? "Freeze snapshot"
                     : "Finish snapshot"}{" "}
-                  - {formatDate(snapshot.created_at)}
+                  - {formatDate(snapshot.createdAt)}
                 </div>
                 <div className="font-medium">{snapshot.summary}</div>
                 {snapshot.label && (
@@ -152,14 +158,14 @@ async function ProjectDetail({ id }: { id: string }) {
                     Label: {snapshot.label}
                   </div>
                 )}
-                {snapshot.left_out && (
+                {snapshot.leftOut && (
                   <div className="text-sm text-muted-foreground">
-                    Left out: {snapshot.left_out}
+                    Left out: {snapshot.leftOut}
                   </div>
                 )}
-                {snapshot.future_note && (
+                {snapshot.futureNote && (
                   <div className="text-sm text-muted-foreground">
-                    Future note: {snapshot.future_note}
+                    Future note: {snapshot.futureNote}
                   </div>
                 )}
               </li>

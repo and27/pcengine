@@ -5,7 +5,11 @@ import { notFound, redirect } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { createClient } from "@/lib/supabase/server";
+import {
+  getUserContext,
+  requireUserContext,
+  supabaseRepoDraftsAdapter,
+} from "@/lib/clients/supabase";
 import {
   convertRepoDraft,
   fetchRepoDraftById,
@@ -35,6 +39,7 @@ function formatDate(value: string | null) {
 async function handleConvertDraft(id: string, formData: FormData) {
   "use server";
 
+  const userContext = await requireUserContext();
   const nameValue = formData.get("name");
   const nextActionValue = formData.get("nextAction");
 
@@ -42,38 +47,46 @@ async function handleConvertDraft(id: string, formData: FormData) {
     throw new Error("Name and next action are required.");
   }
 
-  await convertRepoDraft(id, {
-    name: nameValue.trim(),
-    nextAction: nextActionValue.trim(),
-    finishDefinition: normalizeOptional(formData.get("finishDefinition")),
-  });
+  await convertRepoDraft(
+    supabaseRepoDraftsAdapter,
+    userContext,
+    id,
+    {
+      name: nameValue.trim(),
+      nextAction: nextActionValue.trim(),
+      finishDefinition: normalizeOptional(formData.get("finishDefinition")),
+    },
+  );
 
   redirect("/protected?toast=draft-converted");
 }
 
 async function DraftDetail({ id }: { id: string }) {
-  const supabase = await createClient();
-  const { data } = await supabase.auth.getClaims();
+  const userContext = await getUserContext();
 
-  if (!data?.claims) {
+  if (!userContext) {
     redirect("/auth/login");
   }
 
-  const draft = await fetchRepoDraftById(id);
+  const draft = await fetchRepoDraftById(
+    supabaseRepoDraftsAdapter,
+    userContext,
+    id,
+  );
 
   if (!draft) {
     notFound();
   }
 
-  const converted = Boolean(draft.converted_project_id);
+  const convertedProjectId = draft.convertedProjectId;
 
   return (
     <div className="flex flex-col gap-6">
       <div className="rounded border border-border px-4 py-3">
-        <div className="font-medium">{draft.full_name}</div>
+        <div className="font-medium">{draft.fullName}</div>
         <div className="text-sm text-muted-foreground">
-          {draft.visibility} · default branch {draft.default_branch} · pushed{" "}
-          {formatDate(draft.pushed_at)}
+          {draft.visibility} · default branch {draft.defaultBranch} · pushed{" "}
+          {formatDate(draft.pushedAt)}
         </div>
         {draft.description && (
           <div className="text-sm text-muted-foreground">
@@ -83,21 +96,21 @@ async function DraftDetail({ id }: { id: string }) {
         <div className="text-sm text-muted-foreground">
           Source:{" "}
           <a
-            href={draft.html_url}
+            href={draft.htmlUrl}
             target="_blank"
             rel="noreferrer"
             className="underline"
           >
-            {draft.html_url}
+            {draft.htmlUrl}
           </a>
         </div>
       </div>
 
-      {converted ? (
+      {convertedProjectId ? (
         <div className="rounded border border-border px-4 py-3 text-sm text-muted-foreground">
-          Converted on {formatDate(draft.converted_at)}.{" "}
+          Converted on {formatDate(draft.convertedAt)}.{" "}
           <Link
-            href={`/protected/projects/${draft.converted_project_id}`}
+            href={`/protected/projects/${convertedProjectId}`}
             className="underline"
           >
             View project
@@ -108,7 +121,7 @@ async function DraftDetail({ id }: { id: string }) {
         <form className="flex flex-col gap-6" action={handleConvertDraft.bind(null, id)}>
           <div className="grid gap-2">
             <Label htmlFor="name">Project name</Label>
-            <Input id="name" name="name" defaultValue={draft.full_name} required />
+            <Input id="name" name="name" defaultValue={draft.fullName} required />
           </div>
 
           <div className="grid gap-2">

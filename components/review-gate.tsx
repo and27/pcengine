@@ -1,7 +1,11 @@
-import { createClient } from "@/lib/supabase/server";
 import { REVIEW_STALE_DAYS } from "@/lib/domain/project";
 import {
+  getUserContext,
+  supabaseProjectsAdapter,
+} from "@/lib/clients/supabase";
+import {
   applyLifecycleAction,
+  fetchProjects,
   updateProject,
   type ProjectSnapshotInput,
 } from "@/lib/usecases/projects";
@@ -13,25 +17,16 @@ import {
 } from "@/components/review-mode-overlay";
 
 async function fetchActiveReviewProjects(): Promise<ReviewProject[]> {
-  const supabase = await createClient();
-  const { data, error } = await supabase
-    .from("projects")
-    .select("id, name, next_action, last_reviewed_at")
-    .eq("status", "active")
-    .order("start_date", { ascending: false, nullsFirst: false });
+  const projects = await fetchProjects(supabaseProjectsAdapter);
 
-  if (error) {
-    throw new Error(`Failed to load projects: ${error.message}`);
-  }
-
-  return (
-    data?.map((project) => ({
+  return projects
+    .filter((project) => project.status === "active")
+    .map((project) => ({
       id: project.id,
       name: project.name,
-      nextAction: project.next_action,
-      lastReviewedAt: project.last_reviewed_at,
-    })) ?? []
-  );
+      nextAction: project.nextAction,
+      lastReviewedAt: project.lastReviewedAt,
+    }));
 }
 
 function ensureSnapshotInput(
@@ -58,7 +53,7 @@ async function applyReviewDecision(
       throw new Error("Next action is required.");
     }
 
-    await updateProject(projectId, {
+    await updateProject(supabaseProjectsAdapter, projectId, {
       nextAction: payload.nextAction,
       lastReviewedAt: reviewedAt,
     });
@@ -66,15 +61,21 @@ async function applyReviewDecision(
   }
 
   const snapshot = ensureSnapshotInput(payload.snapshot);
-  await applyLifecycleAction(projectId, action, snapshot);
-  await updateProject(projectId, { lastReviewedAt: reviewedAt });
+  await applyLifecycleAction(
+    supabaseProjectsAdapter,
+    projectId,
+    action,
+    snapshot,
+  );
+  await updateProject(supabaseProjectsAdapter, projectId, {
+    lastReviewedAt: reviewedAt,
+  });
 }
 
 export async function ReviewGate() {
-  const supabase = await createClient();
-  const { data } = await supabase.auth.getClaims();
+  const userContext = await getUserContext();
 
-  if (!data?.claims) {
+  if (!userContext) {
     return null;
   }
 

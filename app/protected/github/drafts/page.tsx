@@ -3,7 +3,10 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import { Button } from "@/components/ui/button";
-import { createClient } from "@/lib/supabase/server";
+import {
+  getUserContext,
+  supabaseRepoDraftsAdapter,
+} from "@/lib/clients/supabase";
 import { fetchRepoDrafts } from "@/lib/usecases/github-drafts";
 
 function formatDate(value: string | null) {
@@ -15,14 +18,13 @@ function formatDate(value: string | null) {
 }
 
 async function DraftList() {
-  const supabase = await createClient();
-  const { data } = await supabase.auth.getClaims();
+  const userContext = await getUserContext();
 
-  if (!data?.claims) {
+  if (!userContext) {
     redirect("/auth/login");
   }
 
-  const drafts = await fetchRepoDrafts();
+  const drafts = await fetchRepoDrafts(supabaseRepoDraftsAdapter, userContext);
 
   if (drafts.length === 0) {
     return (
@@ -44,21 +46,21 @@ async function DraftList() {
               href={`/protected/github/drafts/${draft.id}`}
               className="underline"
             >
-              {draft.full_name}
+              {draft.fullName}
             </Link>
           </div>
           <div className="text-sm text-muted-foreground">
-            {draft.visibility} · default branch {draft.default_branch} · pushed{" "}
-            {formatDate(draft.pushed_at)}
+            {draft.visibility} · default branch {draft.defaultBranch} · pushed{" "}
+            {formatDate(draft.pushedAt)}
           </div>
           {draft.description && (
             <div className="text-sm text-muted-foreground">
               {draft.description}
             </div>
           )}
-          {draft.converted_project_id && (
+          {draft.convertedProjectId && (
             <div className="text-xs text-muted-foreground">
-              Converted · {formatDate(draft.converted_at)}
+              Converted · {formatDate(draft.convertedAt)}
             </div>
           )}
         </div>

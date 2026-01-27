@@ -1,6 +1,7 @@
 import { cookies } from "next/headers";
 import { NextResponse, type NextRequest } from "next/server";
 
+import { supabaseGitHubConnectionsAdapter } from "@/lib/clients/supabase";
 import { createClient } from "@/lib/supabase/server";
 import { upsertGitHubConnection } from "@/lib/usecases/github";
 
@@ -106,7 +107,7 @@ export async function GET(request: NextRequest) {
 
   const githubUser = await fetchGitHubUser(tokenResponse.access_token);
 
-  await upsertGitHubConnection({
+  await upsertGitHubConnection(supabaseGitHubConnectionsAdapter, {
     userId,
     githubUserId: githubUser.id,
     githubLogin: githubUser.login,
